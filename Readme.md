@@ -9,10 +9,10 @@ My Boiler is a Saunier Duval (eBUS) with an Opentherm interface with eBUS ([link
 
 The hardware used is: 
 ---
-- Master interface from DIYLESS
-- ESP32 MINI D1
-- Opentherm <-> EBUS interface
-- MOES TRV Valve
+* Master interface from DIYLESS
+* ESP32 MINI D1
+* Opentherm <-> EBUS interface
+* MOES TRV Valve
 
 The software stack:
 ---
@@ -28,8 +28,27 @@ If a room has a current temperature that is lower to the setpoint, then the ther
 
 ##  
 
-### Parameters
+### Home Assistant exposed entities & parameters
 
+Control & sensors
+---
+
+* Climate: Boiler Thermostat
+* Sensor: Boiler Flame
+* Sensor: Boiler Temperature
+* Sensor: Central Heating
+* Sensor: Openther log
+* Sensor: Water Heating
+
+Configuration:
+---
+* Switch: Enable central heating
+* Switch: Enable OT Log
+* Switch: Enable Water Heating
+* Number: Max Modulation Level
+* Number: High bound temperature
+* Number: Low bound temperature
+* Number: No setpoint temperature override 
 
 
 
