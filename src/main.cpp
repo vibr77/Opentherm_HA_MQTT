@@ -425,6 +425,10 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
     case OpenThermMessageID::Status:
         boiler_status = response & 0xFF;
         
+        isFlameOn=response & 0x8;
+        isHotWaterActive=response & 0x4;
+        isCentralHeatingActive=response & 0x2;
+
         ESP_LOGI("MAIN","Boiler status:[%s]",String(boiler_status, BIN).c_str());
         break;
     case OpenThermMessageID::TSet:
