@@ -14,7 +14,7 @@ ______________________
 #ifndef _CONFIG_
 #define _CONFIG_
 
-static const char * SW_VERSION="0.34";
+static const char * SW_VERSION="0.35";
 
 // MOVE TO pwd.h
 
@@ -38,14 +38,34 @@ static const int OT_OUT_PIN = 22; //for Arduino, 5 for ESP8266 (D1), 22 for ESP3
 // Temperature sensor pin
 static const int ROOM_TEMP_SENSOR_PIN = 14; //for Arduino, 14 for ESP8266 (D5), 18 for ESP32
 
+// Default Value
+
+static const char * TEMPERATURE_UNIT= "C";
+static const float MIN_SP_TEMP=5.0;
+static const float MAX_SP_TEMP=30.0;
+static const float INITIAL_TEMP=19.0;
+static const float PRECISION=0.5;
+static const float TEMPERATURE_STEP=0.5;
+static  const boolean OPTIMISTIC=false;
+
+static const float LOW_BAND_TEMP=20.0;
+static const float HIGH_BAND_TEMP=65;
+static const float NO_SP_TEMP_OVERRIDE=25;
+static const int MAX_MODULATION_LEVEL=100;
+
+
+
 static const String BASE_TOPIC = "homeassistant/opentherm-thermostat/";
 
 static const String CLIMATE_BASE_TOPIC = "homeassistant/climate/opentherm-thermostat/";
 static const String DISCOVERY_CLIMATE_TOPIC = CLIMATE_BASE_TOPIC + "config";
 
-
 static const String FLAME_BASE_TOPIC = "homeassistant/binary_sensor/opentherm-thermostat/flame/";
 static const String DISCOVERY_FLAME_TOPIC = FLAME_BASE_TOPIC + "config";
+
+static const String FLAME_LEVEL_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/flame_level/";
+static const String DISCOVERY_FLAME_LEVEL_TOPIC = FLAME_LEVEL_BASE_TOPIC + "config";
+
 
 static const String WATER_HEATING_BASE_TOPIC = "homeassistant/binary_sensor/opentherm-thermostat/waterheating/";
 static const String DISCOVERY_WATER_HEATING_TOPIC = WATER_HEATING_BASE_TOPIC + "config";
@@ -56,8 +76,31 @@ static const String DISCOVERY_CENTRAL_HEATING_TOPIC = CENTRAL_HEATING_BASE_TOPIC
 static const String BOILERTEMP_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/boilertemp/";
 static const String DISCOVERY_BOILER_TEMP_TOPIC = BOILERTEMP_BASE_TOPIC + "config";
 
-static const String MODLVL_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/modulationlevel/";
-static const String DISCOVERY_MODLVL_TOPIC = MODLVL_BASE_TOPIC + "config";
+static const String BOILER_TARGET_TEMP_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/boiler_target_temp/";
+static const String DISCOVERY_BOILER_TARGET_TEMP_TOPIC = BOILER_TARGET_TEMP_BASE_TOPIC + "config";
+
+static const String INTEGRAL_ERROR_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/integral_error/";
+static const String DISCOVERY_INTEGRAL_ERROR_TOPIC = INTEGRAL_ERROR_BASE_TOPIC + "config";
+
+static const String DWHTEMP_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/dwhtemp/";
+static const String DISCOVERY_DWH_TEMP_TOPIC = DWHTEMP_BASE_TOPIC + "config";
+
+
+static const String MAX_MODLVL_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/maxmodulationlevel/";
+static const String DISCOVERY_MAX_MODLVL_TOPIC = MAX_MODLVL_BASE_TOPIC + "config";
+
+static const String HBAND_TEMP_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/high_band_temperature/";
+static const String DISCOVERY_HBAND_TEMP_TOPIC = HBAND_TEMP_BASE_TOPIC + "config";
+
+static const String LBAND_TEMP_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/low_band_temperature/";
+static const String DISCOVERY_LBAND_TEMP_TOPIC = LBAND_TEMP_BASE_TOPIC + "config";
+
+static const String NOSP_OVERRIDE_TEMP_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/no_sp_temp_override/";
+static const String DISCOVERY_NOSP_OVERRIDE_TEMP_TOPIC = NOSP_OVERRIDE_TEMP_BASE_TOPIC + "config";
+
+static const String DISCOVERY_TEMP_DHW_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/dwh_temp/";
+static const String DISCOVERY_TEMP_DHW_TOPIC  = DISCOVERY_TEMP_DHW_BASE_TOPIC + "config";
+
 
 static const String ENABLE_CHEATING_BASE_TOPIC = "homeassistant/switch/opentherm-thermostat/enable_cheating/";
 static const String DISCOVERY_ENABLE_CHEATING_TOPIC = ENABLE_CHEATING_BASE_TOPIC + "config";
@@ -71,14 +114,20 @@ static const String DISCOVERY_ENABLE_OT_LOG_TOPIC = ENABLE_OT_LOG_BASE_TOPIC + "
 static const String OT_LOG_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/ot_log/";
 static const String DISCOVERY_OT_LOG_TOPIC = OT_LOG_BASE_TOPIC + "config";
 
-static const char * TEMPERATURE_UNIT= "C";
-static const float MIN_SP_TEMP=5.0;
-static const float MAX_SP_TEMP=30.0;
-static const float INITIAL_TEMP=19.0;
-static const float PRECISION=0.5;
-static const float TEMPERATURE_STEP=0.5;
-static  const boolean OPTIMISTIC=false;
+static const String WIFI_SSID_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/wifi_ssid/";
+static const String DISCOVERY_WIFI_SSID_TOPIC = WIFI_SSID_BASE_TOPIC + "config";
 
+static const String WIFI_RSSI_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/wifi_rssi/";
+static const String DISCOVERY_WIFI_RSSI_TOPIC = WIFI_RSSI_BASE_TOPIC + "config";
+
+static const String IP_ADDR_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/ip_addr/";
+static const String DISCOVERY_IP_ADDR_TOPIC = IP_ADDR_BASE_TOPIC + "config";
+
+static const String MAC_ADDR_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/mac_addr/";
+static const String DISCOVERY_MAC_ADDR_TOPIC = MAC_ADDR_BASE_TOPIC + "config";
+
+static const String PING_ALIVE_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/ping_alive/";
+static const String DISCOVERY_PING_ALIVE_TOPIC = PING_ALIVE_BASE_TOPIC + "config";
 
 const String AVAILABILITY_TOPIC = BASE_TOPIC + "status";
 
@@ -116,22 +165,34 @@ const String OT_LOG_STATE_TOPIC = BASE_TOPIC + "ot_log/state";
 
 // Modulation Level
 
-const String MODULATION_LEVEL_STATE_TOPIC = BASE_TOPIC + "modulation_level/state";
-const String MODULATION_LEVEL_SET_TOPIC = BASE_TOPIC + "modulation_level/set";
+const String MAX_MODULATION_LEVEL_STATE_TOPIC = BASE_TOPIC + "max_modulation_level/state";
+const String MAX_MODULATION_LEVEL_SET_TOPIC = BASE_TOPIC + "max_modulation_level/set";
+
+
+const String LBAND_TEMP_STATE_TOPIC = BASE_TOPIC + "low_band_temperature/state";
+const String LBAND_TEMP_SET_TOPIC = BASE_TOPIC + "low_band_temperature/set";
+
+const String HBAND_TEMP_STATE_TOPIC = BASE_TOPIC + "high_band_temperature/state";
+const String HBAND_TEMP_SET_TOPIC = BASE_TOPIC + "high_band_temperature/set";
+
+const String NOSP_OVERRIDE_TEMP_STATE_TOPIC = BASE_TOPIC + "no_sp_temp_override/state";
+const String NOSP_OVERRIDE_TEMP_SET_TOPIC = BASE_TOPIC + "no_sp_temp_override/set";
 
 // boiler water temperature topic
-const String TEMP_BOILER_GET_TOPIC = BASE_TOPIC + "boiler-temperature/state";
-const String TEMP_BOILER_TARGET_GET_TOPIC = BASE_TOPIC + "boiler-target-temperature/get";
+const String TEMP_BOILER_STATE_TOPIC = BASE_TOPIC + "boiler_temperature/state";
+const String TEMP_BOILER_TARGET_TEMP_STATE_TOPIC = BASE_TOPIC + "boiler_target_temperature/state";
 
 // debug data
-const String INTEGRAL_ERROR_GET_TOPIC = BASE_TOPIC + "integral-error/get";
-const String FLAME_STATUS_GET_TOPIC = BASE_TOPIC + "flame-status/state";
-const String FLAME_LEVEL_GET_TOPIC = BASE_TOPIC + "flame-level/get";
+const String INTEGRAL_ERROR_STATE_TOPIC = BASE_TOPIC + "integral-error/state";
+const String FLAME_STATUS_STATE_TOPIC = BASE_TOPIC + "flame_status/state";
+
+const String FLAME_LEVEL_STATE_TOPIC = BASE_TOPIC + "flame_level/state";
 
 // domestic hot water temperature topic
-const String TEMP_DHW_GET_TOPIC = BASE_TOPIC + "dhw-temperature/get";
+const String TEMP_DHW_STATE_TOPIC = BASE_TOPIC + "dhw-temperature/state";
 const String TEMP_DHW_SET_TOPIC = BASE_TOPIC + "dhw-temperature/set";
-const String ACTUAL_TEMP_DHW_GET_TOPIC = BASE_TOPIC + "dhw-actual-temperature/get";
+
+const String ACTUAL_TEMP_DHW_STATE_TOPIC = BASE_TOPIC + "dhw-actual-temperature/state";
 
 // domestic hot water enable/disable
 const String STATE_DHW_GET_TOPIC = BASE_TOPIC + "dhw-state/get";
@@ -140,6 +201,15 @@ const String STATE_DHW_SET_TOPIC = BASE_TOPIC + "dhw-state/set";
 // setpoint topic
 const String SETPOINT_OVERRIDE_SET_TOPIC = BASE_TOPIC + "setpoint-override/set";
 const String SETPOINT_OVERRIDE_RESET_TOPIC = BASE_TOPIC + "setpoint-override/reset";
+
+const String WIFI_SSID_STATE_TOPIC = BASE_TOPIC + "wifi_ssid/state";
+const String WIFI_RSSI_STATE_TOPIC = BASE_TOPIC + "wifi_rssi/state";
+
+const String IP_ADDR_STATE_TOPIC = BASE_TOPIC + "ip_addr/state";
+const String MAC_ADDR_STATE_TOPIC = BASE_TOPIC + "mac_addr/state";
+
+const String PING_ALIVE_STATE_TOPIC = BASE_TOPIC + "ping_alive/state";
+
 
 // logs topic
 const String LOG_GET_TOPIC = BASE_TOPIC + "log";

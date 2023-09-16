@@ -17,35 +17,82 @@ Release changelog:
 #include "ESPAsyncWebServer/ESPAsyncWebServer.h"
 
 #include <WiFiUdp.h>
-#include <ArduinoOTA.h>
+//#include <ArduinoOTA.h>
 
-#include <RemoteDebug.h>
+//#include <RemoteDebug.h>
+
+#define MASTER_STATUS_CH_ENABLED 0x1
+#define MASTER_STATUS_DHW_ENABLED 0x2
+#define MASTER_STATUS_COOLING_ENABLED 0x4
 
 #include <OpenTherm.h>
 #include <PubSubClient.h>
+#define MQTT_MAX_PACKET_SIZE 256
 
+#include "include/main.h"
 #include "include/config.h"
+#include "include/pwd.h"
 #include "include/mqtt_com.h"
 
-RemoteDebug Debug;
+
+//RemoteDebug Debug;
 
 OpenTherm ot(OT_IN_PIN, OT_OUT_PIN);
 WiFiClient espClient;
-PubSubClient client((const char*)MQTT_SERVER, MQTT_PORT, callback, espClient);
+PubSubClient client((const char*)MQTT_SERVER, MQTT_PORT,  espClient);
 AsyncWebServer server(80); 
 
-void connectWIFI();
-void connectMQTT();
-void logOTRequest(unsigned long response);
-
 int status = WL_IDLE_STATUS;
-
 
 void IRAM_ATTR handleInterrupt() {
     ot.handleInterrupt();
 }
 
+ 
 
+
+uint8_t requests[] = {
+  OpenThermMessageID::Status, // READ
+  OpenThermMessageID::TSet, // WRITE
+  OpenThermMessageID::Tboiler, // READ
+  OpenThermMessageID::Tdhw, // READ
+  OpenThermMessageID::TdhwSet, // WRITE
+  OpenThermMessageID::RelModLevel, // READ
+  OpenThermMessageID::MaxRelModLevelSetting // WRITE
+};
+const byte requests_count = sizeof(requests) / sizeof(uint8_t);
+byte req_idx = 0;
+
+
+float pid(float sp, float pv, float pv_last, float& ierr, float dt) {
+  float KP = 10;
+  float KI = 0.02;
+
+  float oplo=LOW_BAND_TEMP;
+  float ophi=HIGH_BAND_TEMP;
+
+  // calculate the error
+  float error = sp - pv;
+  // calculate the integral error
+  ierr = ierr + KI * error * dt;
+  // calculate the measurement derivative
+  //float dpv = (pv - pv_last) / dt;
+  // calculate the PID output
+  float P = KP * error; //proportional contribution
+  float I = ierr; //integral contribution
+  float op = P + I;
+  // implement anti-reset windup
+  if ((op < oplo) || (op > ophi)) {
+    I = I - KI * error * dt;
+    // clip output
+    op = max(oplo, min(ophi, op));
+  }
+  ierr = I;
+
+  //Serial.println("sp=" + String(sp) + " pv=" + String(pv) + " dt=" + String(dt) + " op=" + String(op) + " P=" + String(P) + " I=" + String(I));
+  ESP_LOGI("MAIN","PID op:[%f] pv:[%f] dt:[%f] sp:[%f] P:[%f] I:[%f]",op,pv,dt,sp,P,I);
+  return op;
+}
 
 String strMsgId[100] {
 	"Status", // flag8 / flag8  Master and Slave Status flags.
@@ -115,7 +162,7 @@ void connectWIFI(){
       delay(1000);
     }
     if (WiFi.status()==WL_CONNECTED){
-      ESP_LOGI(TAG,"WiFi connected to ssid:%s",WIFI_SSID);
+      ESP_LOGI("MAIN","WiFi connected to ssid:%s",WIFI_SSID);
     }
   } 
   return;
@@ -128,86 +175,69 @@ void connectMQTT(){
   }
   client.setBufferSize(4096);
 
-
-
-
   if (WiFi.status() == WL_CONNECTED ){ 
-    if (!client.loop()) {
-      
-      client.disconnect();
-
+    
       if (client.connect(MQTT_DEVICENAME, MQTT_USER, MQTT_PASS)) {
+        bool subRes;
+        client.setCallback(callback);
+
         client.subscribe(TEMP_SETPOINT_SET_TOPIC.c_str());
+        client.subscribe(TEMP_SETPOINT_STATE_TOPIC.c_str());
+
         client.subscribe(MODE_SET_TOPIC.c_str());
+        client.subscribe(MODE_STATE_TOPIC.c_str());
+
+        client.subscribe(CURRENT_TEMP_STATE_TOPIC.c_str());
         client.subscribe(CURRENT_TEMP_SET_TOPIC.c_str());
+        
+        client.subscribe(TEMP_DHW_STATE_TOPIC.c_str());
         client.subscribe(TEMP_DHW_SET_TOPIC.c_str());
+        
         client.subscribe(STATE_DHW_SET_TOPIC.c_str());
 
-        Serial.println("Connected to MQTT");
+        client.subscribe(CENTRAL_HEATING_STATE_TOPIC.c_str());
+        client.subscribe(WATER_HEATING_STATE_TOPIC.c_str());
+        
+        client.subscribe(ENABLE_CHEATING_SET_TOPIC.c_str());
+        client.subscribe(ENABLE_CHEATING_STATE_TOPIC.c_str());
+        client.subscribe(ENABLE_WHEATING_SET_TOPIC.c_str());
+        client.subscribe(ENABLE_WHEATING_STATE_TOPIC.c_str());
+
+        client.subscribe(ENABLE_OT_LOG_STATE_TOPIC.c_str());
+        client.subscribe(ENABLE_OT_LOG_SET_TOPIC.c_str());
+
+        client.subscribe(MAX_MODULATION_LEVEL_STATE_TOPIC.c_str());
+        client.subscribe(MAX_MODULATION_LEVEL_SET_TOPIC.c_str());
+
+        client.subscribe(LBAND_TEMP_STATE_TOPIC.c_str());
+        client.subscribe(LBAND_TEMP_SET_TOPIC.c_str());
+
+        client.subscribe(HBAND_TEMP_STATE_TOPIC.c_str());
+       
+        client.subscribe(HBAND_TEMP_SET_TOPIC.c_str());
+    
+        client.subscribe(NOSP_OVERRIDE_TEMP_STATE_TOPIC.c_str());
+        client.subscribe(NOSP_OVERRIDE_TEMP_SET_TOPIC.c_str());
+
+        client.subscribe(TEMP_BOILER_STATE_TOPIC.c_str());
+
+        client.subscribe(FLAME_STATUS_STATE_TOPIC.c_str());
+        client.subscribe(FLAME_LEVEL_STATE_TOPIC.c_str());
+
+        client.subscribe(TEMP_DHW_STATE_TOPIC.c_str());
+        client.subscribe(TEMP_DHW_SET_TOPIC.c_str());
+
+        //client.subscribe(SETPOINT_OVERRIDE_STATE_TOPIC.c_str());
+        client.subscribe(SETPOINT_OVERRIDE_SET_TOPIC.c_str());
+
+        ESP_LOGI("MAIN","Connected to MQTT");
+       
       } else {
-       Serial.println("Not connected to MQTT");
+        ESP_LOGE("MAIN","NOT Connected to MQTT");
       }
     }
-  }
+  
   return;
-}
-
-void processRequest(unsigned long request, OpenThermResponseStatus status) {
-    Serial.println("T" + String(request, HEX)); //master/thermostat request
-
-    unsigned long response = 0;
-    OpenThermMessageID id = ot.getDataID(request);
-    uint16_t data = ot.getUInt(request);
-    float f = ot.getFloat(request);
-    OpenThermMessageType mtype=ot.getMessageType(request);
-    const char * mstr=ot.messageTypeToString(mtype);
-
-    Serial.print(mstr);
-    Serial.print(" ->" + strMsgId[id] + "=");
-    Serial.println(data/256);
-
-    switch(id)
-    {
-      case OpenThermMessageID::Status:
-      {
-        uint8_t statusRequest = data >> 8;
-        uint8_t chEnable = statusRequest & 0x1;
-        uint8_t dhwEnable = statusRequest & 0x2;
-        data &= 0xFF00;
-        //data |= 0x01; //fault indication
-        if (chEnable) data |= 0x02; //CH active
-        if (dhwEnable) data |= 0x04; //DHW active
-        if (chEnable || dhwEnable) data |= 0x08; //flame on
-        //data |= 0x10; //cooling active
-        //data |= 0x20; //CH2 active
-        //data |= 0x40; //diagnostic/service event
-        //data |= 0x80; //electricity production on
-
-        response = ot.buildResponse(OpenThermMessageType::READ_ACK, id, data);
-        break;
-      }
-      case OpenThermMessageID::TSet:
-      {
-        response = ot.buildResponse(OpenThermMessageType::WRITE_ACK, id, data);
-        break;
-      }
-      case OpenThermMessageID::Tboiler:
-      {
-        data = ot.temperatureToData(45);
-        response = ot.buildResponse(OpenThermMessageType::READ_ACK, id, data);
-        break;
-      }
-      default:
-      {
-        //build UNKNOWN-DATAID response
-        response = ot.buildResponse(OpenThermMessageType::UNKNOWN_DATA_ID, ot.getDataID(request), 0);   
-      }
-    }
-    Serial.println("B" + String(response, HEX)); //slave/boiler response
-
-    //send response
-    delay(20); //20..400ms, usually 100ms
-    ot.sendResponse(response);
 }
 
 void web_otcmd(AsyncWebServerRequest * request){
@@ -227,17 +257,23 @@ void web_otcmd(AsyncWebServerRequest * request){
  
     request->send(200, "text/plain", "message received");
 
-   /* unsigned int data = 0xFFFF;
+   /* 
+    
+    unsigned int data = 0xFFFF;
     unsigned long rqst = ot.buildRequest(OpenThermRequestType::READ,OpenThermMessageID::RelModLevel,data);
     unsigned long response = ot.sendRequest(rqst);
     Serial.println(response);
     logOTRequest(response);
+    
     */
+
     AsyncWebParameter* p = request->getParam(1);
     int ii=p->value().toInt()*256;
+    
     unsigned int data = ii ;
-  unsigned long rqst = ot.buildRequest(OpenThermRequestType::READ,OpenThermMessageID::TrSet,data);
-  unsigned long resp = ot.sendRequest(rqst);
+    unsigned long rqst = ot.buildRequest(OpenThermRequestType::READ,OpenThermMessageID::TrSet,data);
+    unsigned long resp = ot.sendRequest(rqst);
+    
     Serial.println(resp);
     logOTRequest(resp);
 
@@ -256,13 +292,12 @@ void logOTRequest(unsigned long response){
     Serial.println(data/256);
 }
 
-void setup()
-{
+void setup(){
+
     Serial.begin(115200);
     delay(1000);
 
-    Debug.begin("monEsp");  
-
+    //Debug.begin("monEsp");  
 
     WiFi.mode(WIFI_STA); //Optional
     WiFi.begin(WIFI_SSID, WIFI_KEY);
@@ -273,13 +308,13 @@ void setup()
         delay(500);
     }
 
-    Serial.println("\nConnected to the WiFi network");
-    Serial.print("Local ESP32 IP: ");
-    Serial.println(WiFi.localIP());
-
-
+    Serial.setDebugOutput(true);
+    
+    ESP_LOGI("MAIN","Connected to the WiFi network %s",WIFI_SSID);
+    ESP_LOGI("MAIN","Local IP %s",WiFi.localIP().toString().c_str());
+          
      ////ArduinoOTA.setHostname("monEsp"); // on donne une petit nom a notre module
-     ArduinoOTA.begin(); // initialisation de l'OTA
+     //ArduinoOTA.begin(); // initialisation de l'OTA
 
     connectMQTT();
     delay(1000);
@@ -287,8 +322,18 @@ void setup()
     // Home Automation Discovery MQTT
     MQTT_DiscoveryMsg_Climate();
     MQTT_DiscoveryMsg_Sensor_Flaming();
+    MQTT_DiscoveryMsg_Sensor_FlameLevel();
     MQTT_DiscoveryMsg_Sensor_BoilerTemperature();
-    MQTT_DiscoveryMsg_Number_Modulation_Level();
+    MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature();
+    MQTT_DiscoveryMsg_Sensor_dwhTemperature();
+    MQTT_DiscoveryMsg_Sensor_IntegralError();
+    
+    MQTT_DiscoveryMsg_Number_MaxModulationLevel();
+    MQTT_DiscoveryMsg_Number_LowBandTemperature();
+    MQTT_DiscoveryMsg_Number_HighBandTemperature();
+    MQTT_DiscoveryMsg_Number_NospTempOverride();
+    MQTT_DiscoveryMsg_Number_dwh_temp();
+    
     MQTT_DiscoveryMsg_Sensor_CentralHeating();
     MQTT_DiscoveryMsg_Sensor_WaterHeating();
     MQTT_DiscoveryMsg_Switch_EnableCentralHeating();
@@ -296,111 +341,189 @@ void setup()
     MQTT_DiscoveryMsg_Switch_EnableLog();
     MQTT_DiscoveryMsg_Text_Log();
 
-    publishInitValue1();
-    publishInitValue2();
-    publishInitValue3("ONLINE");
-    publishInitValue4();
-    //publishInitValue6();
+    MQTT_DiscoveryMsg_Text_WIFI_SSID();
+    MQTT_DiscoveryMsg_Text_WIFI_RSSI();
+    MQTT_DiscoveryMsg_Text_IpAddr();
+    MQTT_DiscoveryMsg_Text_MacAddr();
+    MQTT_DiscoveryMsg_Text_PingAlive();
+
+    publishAvailable();
+    //publishInitValue2();
+    //publishInitValue5(19);
+
+     unsigned long now = millis();
+     startTime=now/1000;
 
     // Web Server Page Management
      server.on("/ot", web_otcmd);  // Chargement de la page d'accueil
      //server.onNotFound(handleNotFound);  // Chargement de la page "Not found"
      server.begin();  // Initialisation du serveur web
 
+    
+    ot.begin(handleInterrupt, processResponse); //OpenTherm Start
+}
+void updateDataDiag(){
+  // send MQTT Update
+  
+  long rssi = WiFi.RSSI();
+  char * sRssi=(char*)malloc(16*(sizeof(char)));
+  sprintf(sRssi,"%ld",sRssi);
+  publishToTopicStr((char*)sRssi,WIFI_RSSI_STATE_TOPIC.c_str(),"value",false); 
+  free(sRssi);
 
-    //OpenTherm Management
-    ot.begin(handleInterrupt);
+  publishToTopicStr((char*)WIFI_SSID,WIFI_SSID_STATE_TOPIC.c_str(),"value",false); 
+  
+  char* IpAddr=(char*)malloc(24*(sizeof(char)));
+  IPAddress ip=WiFi.localIP();
+  sprintf(IpAddr,"%d.%d.%d.%d",ip[0],ip[1],ip[2],ip[3]);
+  publishToTopicStr((char*)IpAddr,IP_ADDR_STATE_TOPIC.c_str(),"value",false); 
+  free(IpAddr);
+
+  String MacAddr=WiFi.macAddress();
+  publishToTopicStr((char*)MacAddr.c_str(),MAC_ADDR_STATE_TOPIC.c_str(),"value",false); 
+  
+  unsigned long now = millis()/1000;
+  char * PingAlive=(char *)malloc(32*sizeof(char));
+  sprintf(PingAlive,"%lu",now);
+  publishToTopicStr(PingAlive,PING_ALIVE_STATE_TOPIC.c_str(),"value",false);
+  
+}
+void updateData(){
+  
+  
+
+  publishToTopicFloat(op,TEMP_BOILER_TARGET_TEMP_STATE_TOPIC.c_str(),"temp",false);
+  publishToTopicFloat(boilerTemp,TEMP_BOILER_STATE_TOPIC.c_str(),"temp",false);
+  publishToTopicFloat(ierr,INTEGRAL_ERROR_STATE_TOPIC.c_str(),"value",false);
+  
+  publishToTopicStr((char*)(bHeatingMode ? "heat" : "off"),MODE_STATE_TOPIC.c_str(),"mode",false); // TODO Add condition on central heating
+  
+  publishToTopicStr((char*)(isFlameOn ? "ON" : "OFF"),FLAME_STATUS_STATE_TOPIC.c_str(),"value",false); // TODO Add condition on central heating
+  publishToTopicFloat(flameLevel,FLAME_LEVEL_STATE_TOPIC.c_str(),"value",false);
+  
+  publishToTopicStr((char*)(isCentralHeatingActive ? "ON" : "OFF"),CENTRAL_HEATING_STATE_TOPIC.c_str(),"value",false); // TODO Add condition on central heating
+  publishToTopicStr((char*)(isHotWaterActive ? "ON" : "OFF"),WATER_HEATING_STATE_TOPIC.c_str(),"value",false); // TODO Add condition on central heating
+  
+  publishToTopicFloat(dwhTemp,ACTUAL_TEMP_DHW_STATE_TOPIC.c_str(),"temp",false);
+  
 }
 
+void processResponse(unsigned long response, OpenThermResponseStatus status) {
+    if (!ot.isValidResponse(response)) {
+        Serial.println("Invalid response: " + String(response, HEX) + ", status=" + String(ot.getLastResponseStatus()));
+        return;
+    }
+   
+    float retT;
+    byte id = (response >> 16 & 0xFF);
+    switch (id){
+      case OpenThermMessageID::Status:
+          boiler_status = response & 0xFF;
+          
+          ESP_LOGI("MAIN","Boiler status:[%s]",String(boiler_status, BIN).c_str());
+          break;
+      case OpenThermMessageID::TSet:
+          retT = (response & 0xFFFF) / 256.0;
+          ESP_LOGI("MAIN","Boiler Response Set CentralHeating target temp:[%f]",retT);
+          break;
+      case OpenThermMessageID::Tboiler:
+          retT = (response & 0xFFFF) / 256.0;
+          ESP_LOGI("MAIN","Boiler Response CentralHeating Current temp:[%f]",retT);
+          break;
+       case OpenThermMessageID::Tdhw:
+          retT = (response & 0xFFFF) / 256.0;
+          dwhTemp=retT;
+          ESP_LOGI("MAIN","Boiler Response Domestic Water Heating Current temp:[%f]",retT);
+          break;
+      case OpenThermMessageID::RelModLevel:
+          flameLevel = (response & 0xFFFF) / 256.0;
+          ESP_LOGI("MAIN","Boiler Response Flame Level:[%f]",flameLevel);
+          break;
+      case OpenThermMessageID::MaxRelModLevelSetting:
+          retT = (response & 0xFFFF) / 256.0;
+          ESP_LOGI("MAIN","Boiler Response Max Modulation Level:[%f]",retT);
+      default:
+          ESP_LOGI("MAIN","Boiler Response:[%s] id:[%s]",String(response, HEX).c_str(),String(id).c_str());
+
+      }
+}
+
+unsigned int buildRequest(byte req_idx){
+    uint16_t status;
+    byte id = requests[req_idx];
+    switch (id){
+      case OpenThermMessageID::Status:
+          status = 0;
+          if (bCentralHeatingEnable) status |= MASTER_STATUS_CH_ENABLED;
+          if (bWaterHeatingEnable) status |= MASTER_STATUS_DHW_ENABLED;
+          //if (CoolingEnabled) status |= MASTER_STATUS_COOLING_ENABLED;
+          status <<= 8;
+          return ot.buildRequest(OpenThermMessageType::READ, OpenThermMessageID::Status, status);
+      case OpenThermMessageID::TSet:
+          return ot.buildRequest(OpenThermMessageType::WRITE, OpenThermMessageID::TSet, ((uint16_t)op) << 8);
+      case OpenThermMessageID::TdhwSet:
+          return ot.buildRequest(OpenThermMessageType::WRITE, OpenThermMessageID::TdhwSet, ((uint16_t)dwhTarget) << 8);
+      case OpenThermMessageID::Tboiler:
+          return ot.buildRequest(OpenThermMessageType::READ, OpenThermMessageID::Tboiler, 0);
+      case OpenThermMessageID::Tdhw:
+          return ot.buildRequest(OpenThermMessageType::READ, OpenThermMessageID::Tdhw, 0);
+      case OpenThermMessageID::MaxRelModLevelSetting:
+          return ot.buildRequest(OpenThermMessageType::READ, OpenThermMessageID::MaxRelModLevelSetting, ((uint16_t)MaxModLevel) << 8);
+      case OpenThermMessageID::RelModLevel:
+          return ot.buildRequest(OpenThermMessageType::READ, OpenThermMessageID::RelModLevel, 0);
+    }
+    return 0;
+}
+
+void handleOpenTherm() {
+  //if (ot.isReady()) { // <------------ to reactivate after test
+    unsigned long now = millis();
+    if (now - lastUpdate > statusUpdateInterval_ms) { // 1 Request every 1 sec
+      lastUpdate = now;
+
+        new_ts = millis();
+        dt = (new_ts - ts) / 1000.0;
+        ts = new_ts;
+        op = pid(sp, t, t_last, ierr, dt);
+        t_last=t;
+
+        if (now - lastPSet <= spOverrideTimeout_ms) {
+          op = nosp_override;
+        }
+
+        unsigned int request = buildRequest(req_idx);  // Rotating the Request
+        ot.sendRequestAync(request);
+        ESP_LOGI("MAIN","Thermostat Request:[%s]",String(request, HEX).c_str());
+        req_idx++;
+      
+        if (req_idx >= requests_count) {
+          req_idx = 0;
+        }
+    }
+  ot.process(); // Check for Reponse and process
+  //}
+}
 
 void loop(){
   
-  //ot.process();
-  ArduinoOTA.handle(); 
-  Debug.handle();
-
   if (!client.connected()) {
     connectMQTT();
   }
-  client.loop();
-  
+ 
+  client.loop();               // MQTT Loop to process subscribre request
 
-  bool enableCentralHeating = true;
-	bool enableHotWater = true;
-	bool enableCooling = false;
-	
-  unsigned long response = ot.setBoilerStatus(enableCentralHeating, enableHotWater, enableCooling);
-	OpenThermResponseStatus responseStatus = ot.getLastResponseStatus();
-	
-  if (responseStatus == OpenThermResponseStatus::SUCCESS) {		
-		Serial.println("Central Heating: " + 
-            String(ot.isCentralHeatingActive(response) ? "on" : "off"));
-		Serial.println("Hot Water: " + 
-            String(ot.isHotWaterActive(response) ? "on" : "off"));
-		Serial.println("Flame: " + 
-            String(ot.isFlameOn(response) ? "on" : "off"));
-	}
-	if (responseStatus == OpenThermResponseStatus::NONE) {
-		Serial.println("Error: OpenTherm is not initialized");
-	}
-	else if (responseStatus == OpenThermResponseStatus::INVALID) {
-		Serial.println("Error: Invalid response " + String(response, HEX));
-	}
-	else if (responseStatus == OpenThermResponseStatus::TIMEOUT) {
-		Serial.println("Error: Response timeout");
-	}
-	//Set Boiler Temperature to 64 degrees C
-	//ot.setBoilerTemperature(64);
-	//Get Boiler Temperature
-	float temperature = ot.getBoilerTemperature();
-	Serial.println("Boiler temperature is " + String(temperature) + " degrees C");	
-	Serial.println();
-	delay(1000);
+  handleOpenTherm();           // Process Opentherm Response & Request
 
-  unsigned int data = 0xFFFF;
-  unsigned long rqst = ot.buildRequest(OpenThermRequestType::READ,OpenThermMessageID::Tboiler,data);
-  unsigned long resp = ot.sendRequest(rqst);
-    Serial.println(resp);
-    logOTRequest(resp);
+  unsigned long now = millis();
+  if (now - lastMqttUpdate > UpdateMqttInterval_ms) {
+    lastMqttUpdate = now;
+    LogMasterParam();
+    updateData();
+  }
 
-  
-  unsigned int dataw = 0xFFFF;
-  unsigned long rqstw = ot.buildRequest(OpenThermRequestType::READ,OpenThermMessageID::Tdhw,dataw);
-  unsigned long respw = ot.sendRequest(rqstw);
-  OpenThermResponseStatus responseStatus2 = ot.getLastResponseStatus();
-  Serial.print("-");
-  Serial.println(responseStatus2);
+  if (now - lastUpdateDiag > UpdateDiagInterval_ms) {
+    updateDataDiag();
+    lastUpdateDiag = now;
+  }
 
-    Serial.println(respw);
-    logOTRequest(respw);
-
- rqstw = ot.buildRequest(OpenThermRequestType::READ,OpenThermMessageID::Tret,dataw);
- respw = ot.sendRequest(rqstw);
- responseStatus2 = ot.getLastResponseStatus();
- Serial.println(responseStatus2);
- logOTRequest(respw);
-
- rqstw = ot.buildRequest(OpenThermRequestType::READ,OpenThermMessageID::RelModLevel,dataw);
-respw = ot.sendRequest(rqstw);
- responseStatus2 = ot.getLastResponseStatus();
- Serial.println(responseStatus2);
- logOTRequest(respw);
-
-  rqstw = ot.buildRequest(OpenThermRequestType::READ,OpenThermMessageID::CHPressure,dataw);
-respw = ot.sendRequest(rqstw);
-responseStatus2 = ot.getLastResponseStatus();
- Serial.println(responseStatus2);
- logOTRequest(respw);
-delay(100);
-dataw=256*24;
-unsigned int datap =  (unsigned int)(24 * 256);
-rqstw = ot.buildRequest(OpenThermRequestType::WRITE_DATA,OpenThermMessageID::TSet,datap);
-//rqstw=268524032;
-respw = ot.sendRequest(rqstw);
-responseStatus2 = ot.getLastResponseStatus();
- Serial.println(responseStatus2);
- logOTRequest(respw);
- // publishInitValue3("ONLINE");
- // delay(4000);
- // publishInitValue3("OFFLINE");
 }
