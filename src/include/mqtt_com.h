@@ -10,6 +10,7 @@ void MQTT_DiscoveryMsg_Sensor_Flaming();
 void MQTT_DiscoveryMsg_Sensor_FlameLevel();
 
 void MQTT_DiscoveryMsg_Sensor_BoilerTemperature();
+void MQTT_DiscoveryMsg_Sensor_BoilerReturnTemperature();
 void MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature();
 void MQTT_DiscoveryMsg_Sensor_IntegralError();
 void MQTT_DiscoveryMsg_Sensor_dwhTemperature();

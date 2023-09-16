@@ -35,18 +35,23 @@ void LogMasterParam(){
   ESP_LOGI(LOG_TAG,"Master Param nosp:[%f]",nosp_override);
   ESP_LOGI(LOG_TAG,"Master Param MaxModLevel:[%d]",MaxModLevel);
   ESP_LOGI(LOG_TAG,"Master Param dwhTarget:[%f]",dwhTarget);
-  ESP_LOGI(LOG_TAG,"Master Param dwhTarget:[%f]",dwhTemp);
+  ESP_LOGI(LOG_TAG,"Master Param dwhTemp:[%f]",dwhTemp);
   ESP_LOGI(LOG_TAG,"Master Param FlameLevel:[%f]",flameLevel);
 
   if (bWaterHeatingEnable==true)
-    ESP_LOGI(LOG_TAG,"Master Param bWaterHeatingEnable:[true]",bWaterHeatingEnable);
+    ESP_LOGI(LOG_TAG,"Master Param bWaterHeatingEnable:[true]");
   else
-    ESP_LOGI(LOG_TAG,"Master Param bWaterHeatingEnable:[false]",bWaterHeatingEnable);
+    ESP_LOGI(LOG_TAG,"Master Param bWaterHeatingEnable:[false]");
 
   if (bCentralHeatingEnable==true)
-    ESP_LOGI(LOG_TAG,"Master Param bCentralHeatingEnable:[true]",bCentralHeatingEnable);
+    ESP_LOGI(LOG_TAG,"Master Param bCentralHeatingEnable:[true]");
   else
-    ESP_LOGI(LOG_TAG,"Master Param bCentralHeatingEnable:[false]",bCentralHeatingEnable);
+    ESP_LOGI(LOG_TAG,"Master Param bCentralHeatingEnable:[false]");
+  
+  if (bHeatingMode==true)
+    ESP_LOGI(LOG_TAG,"Master Param bHeatingMode:[true]");
+  else
+    ESP_LOGI(LOG_TAG,"Master Param bHeatingMode:[false]");
 
 }
 
@@ -219,6 +224,28 @@ void MQTT_DiscoveryMsg_Sensor_BoilerTemperature(){
   doc["availability"]=dev["availability"];
 
   bool published= sendMqttMsg(DISCOVERY_BOILER_TEMP_TOPIC.c_str(),doc);
+
+}
+
+void MQTT_DiscoveryMsg_Sensor_BoilerReturnTemperature(){
+
+  DynamicJsonDocument doc(4096);
+
+  doc["name"] = "Boiler Return temperature";
+  doc["dev_cla"] = "temperature";
+  doc["unit_of_measurement"] = "°C";
+  
+  doc["suggested_display_precision"]=2;
+  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_BOILERRETTEMP";
+  doc["qos"]=0;
+  doc["state_topic"]=TEMP_BOILER_RETURN_STATE_TOPIC;
+  doc["value_template"]="{{ value_json.temp }}";
+  
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_BOILER_RETURN_TEMP_TOPIC.c_str(),doc);
 
 }
 

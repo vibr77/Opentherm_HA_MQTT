@@ -74,6 +74,9 @@ static const String DISCOVERY_CENTRAL_HEATING_TOPIC = CENTRAL_HEATING_BASE_TOPIC
 static const String BOILERTEMP_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/boilertemp/";
 static const String DISCOVERY_BOILER_TEMP_TOPIC = BOILERTEMP_BASE_TOPIC + "config";
 
+static const String BOILER_RETURN_TEMP_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/boiler_return_temp/";
+static const String DISCOVERY_BOILER_RETURN_TEMP_TOPIC = BOILER_RETURN_TEMP_BASE_TOPIC + "config";
+
 static const String BOILER_TARGET_TEMP_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/boiler_target_temp/";
 static const String DISCOVERY_BOILER_TARGET_TEMP_TOPIC = BOILER_TARGET_TEMP_BASE_TOPIC + "config";
 
@@ -180,6 +183,7 @@ const String NOSP_OVERRIDE_TEMP_SET_TOPIC = BASE_TOPIC + "no_sp_temp_override/se
 const String TEMP_BOILER_STATE_TOPIC = BASE_TOPIC + "boiler_temperature/state";
 const String TEMP_BOILER_TARGET_TEMP_STATE_TOPIC = BASE_TOPIC + "boiler_target_temperature/state";
 
+const String TEMP_BOILER_RETURN_STATE_TOPIC = BASE_TOPIC + "boiler_return_temperature/state";
 // debug data
 const String INTEGRAL_ERROR_STATE_TOPIC = BASE_TOPIC + "integral-error/state";
 const String FLAME_STATUS_STATE_TOPIC = BASE_TOPIC + "flame_status/state";

@@ -40,7 +40,7 @@ bool bWaterHeating=false;
 bool isFlameOn=false,isCentralHeatingActive=false,isHotWaterActive=false;
 
 int MaxModLevel=100;
-float flameLevel=0,boilerTemp=0,dwhTemp=0,dwhTarget=45;
+float flameLevel=0,boilerTemp=0,boilerReturnTemp=0,dwhTemp=0,dwhTarget=45;
 float nosp_override=NO_SP_TEMP_OVERRIDE;
 
 float bParamChanged=false;        // Flag when value need to be pass to the boiler (eg: dwhTarget, bCentralHeatingEnable,...)

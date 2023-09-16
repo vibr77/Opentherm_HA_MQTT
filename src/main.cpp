@@ -58,7 +58,8 @@ uint8_t requests[] = {
   OpenThermMessageID::Tdhw, // READ
   OpenThermMessageID::TdhwSet, // WRITE
   OpenThermMessageID::RelModLevel, // READ
-  OpenThermMessageID::MaxRelModLevelSetting // WRITE
+  OpenThermMessageID::MaxRelModLevelSetting, // WRITE
+  OpenThermMessageID::Tret // WRITE
 };
 const byte requests_count = sizeof(requests) / sizeof(uint8_t);
 byte req_idx = 0;
@@ -69,14 +70,14 @@ float pid(float sp, float pv, float pv_last, float& ierr, float dt) {
   float KI = 0.02;
 
   float op=0;
-
+/*
   if (bHeatingMode==false || bCentralHeatingEnable==false){
     op=oplo;
     ESP_LOGI("MAIN","PID op:[%f]=oplo:[%f] bHeatingMode==false || bCentralHeatingEnable==false ",op,oplo);
   
     return op;
   }
-    
+   */ 
 
   // calculate the error
   float error = sp - pv;
@@ -185,6 +186,10 @@ void connectMQTT(){
   if (WiFi.status() == WL_CONNECTED ){ 
     
       if (client.connect(MQTT_DEVICENAME, MQTT_USER, MQTT_PASS)) {
+
+        unsigned long now = millis();
+        lastMqttUpdate = now+20000; // Delay MQTT Data update by 20 sec after cnx
+
         bool subRes;
         client.setCallback(callback);
 
@@ -331,6 +336,7 @@ void setup(){
     MQTT_DiscoveryMsg_Sensor_Flaming();
     MQTT_DiscoveryMsg_Sensor_FlameLevel();
     MQTT_DiscoveryMsg_Sensor_BoilerTemperature();
+    MQTT_DiscoveryMsg_Sensor_BoilerReturnTemperature();
     MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature();
     MQTT_DiscoveryMsg_Sensor_dwhTemperature();
     MQTT_DiscoveryMsg_Sensor_IntegralError();
@@ -360,6 +366,9 @@ void setup(){
 
      unsigned long now = millis();
      startTime=now/1000;
+
+
+    lastMqttUpdate = now+10000; // Shift 10 sec in the future to avoid updatedata before subscribed data to be managed
 
     // Web Server Page Management
      server.on("/ot", web_otcmd);  // Chargement de la page d'accueil
@@ -401,11 +410,13 @@ void updateData(){
   publishToTopicFloat(boilerTemp,TEMP_BOILER_STATE_TOPIC.c_str(),"temp",false);
   publishToTopicFloat(ierr,INTEGRAL_ERROR_STATE_TOPIC.c_str(),"value",false);
   
-  publishToTopicStr((char*)(bHeatingMode ? "heat" : "off"),MODE_STATE_TOPIC.c_str(),"mode",false); // TODO Add condition on central heating
+  //publishToTopicStr((char*)(bHeatingMode ? "heat" : "off"),MODE_STATE_TOPIC.c_str(),"mode",false); // TODO Add condition on central heating
   
   publishToTopicStr((char*)(isFlameOn ? "ON" : "OFF"),FLAME_STATUS_STATE_TOPIC.c_str(),"value",false); // TODO Add condition on central heating
   publishToTopicFloat(flameLevel,FLAME_LEVEL_STATE_TOPIC.c_str(),"value",false);
   
+  publishToTopicFloat(boilerTemp,TEMP_BOILER_STATE_TOPIC.c_str(),"temp",false);
+  publishToTopicFloat(boilerReturnTemp,TEMP_BOILER_RETURN_STATE_TOPIC.c_str(),"temp",false);
   publishToTopicStr((char*)(isCentralHeatingActive ? "ON" : "OFF"),CENTRAL_HEATING_STATE_TOPIC.c_str(),"value",false); // TODO Add condition on central heating
   publishToTopicStr((char*)(isHotWaterActive ? "ON" : "OFF"),WATER_HEATING_STATE_TOPIC.c_str(),"value",false); // TODO Add condition on central heating
   
@@ -437,6 +448,7 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
         break;
     case OpenThermMessageID::Tboiler:
         retT = (response & 0xFFFF) / 256.0;
+        boilerTemp=retT;
         ESP_LOGI("MAIN","Boiler Response CentralHeating Current temp:[%f]",retT);
         break;
      case OpenThermMessageID::Tdhw:
@@ -451,6 +463,10 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
     case OpenThermMessageID::MaxRelModLevelSetting:
         retT = (response & 0xFFFF) / 256.0;
         ESP_LOGI("MAIN","Boiler Response Max Modulation Level:[%f]",retT);
+     case OpenThermMessageID::Tret:
+        retT = (response & 0xFFFF) / 256.0;
+        boilerReturnTemp=retT;
+        ESP_LOGI("MAIN","Boiler Response Return water temperature:[%f]",retT);
     default:
         ESP_LOGI("MAIN","Boiler Response:[%s] id:[%s]",String(response, HEX).c_str(),String(id).c_str());
   }
@@ -479,6 +495,8 @@ unsigned int buildRequest(byte req_idx){
         return ot.buildRequest(OpenThermMessageType::WRITE, OpenThermMessageID::MaxRelModLevelSetting, ((uint16_t)MaxModLevel) << 8);
     case OpenThermMessageID::RelModLevel:
         return ot.buildRequest(OpenThermMessageType::READ, OpenThermMessageID::RelModLevel, 0);
+    case OpenThermMessageID::Tret:
+        return ot.buildRequest(OpenThermMessageType::READ, OpenThermMessageID::Tret, 0);
   }
   return 0;
 }
@@ -493,9 +511,9 @@ void handleOpenTherm() {
     ts = new_ts;
     op = pid(sp, t, t_last, ierr, dt);
     t_last=t;
-    if (now - lastPSet <= spOverrideTimeout_ms) {
+   /* if (now - lastPSet <= spOverrideTimeout_ms) {
       op = nosp_override;
-    }
+    }*/
     unsigned int request = buildRequest(req_idx);  // Rotating the Request
     ot.sendRequestAync(request);
     ESP_LOGI("MAIN","Thermostat Request:[%s]",String(request, HEX).c_str());
