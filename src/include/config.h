@@ -14,7 +14,7 @@ ______________________
 #ifndef _CONFIG_
 #define _CONFIG_
 
-static const char * SW_VERSION="0.35";
+static const char * SW_VERSION="0.39";
 
 // MOVE TO pwd.h
 
@@ -52,8 +52,6 @@ static const float LOW_BAND_TEMP=20.0;
 static const float HIGH_BAND_TEMP=65;
 static const float NO_SP_TEMP_OVERRIDE=25;
 static const int MAX_MODULATION_LEVEL=100;
-
-
 
 static const String BASE_TOPIC = "homeassistant/opentherm-thermostat/";
 

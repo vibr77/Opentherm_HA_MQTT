@@ -56,7 +56,7 @@ DynamicJsonDocument getDeviceBlock(){
     DynamicJsonDocument doc(1024);
     
     doc["dev"]["ids"][0]=MQTT_DEVICENAME;
-    doc["dev"]["name"]="OpenTherm Boiler Master Thermostat";
+    doc["dev"]["name"]="Boiler controller ";
     doc["dev"]["mdl"]="ESP32_MASTER_OT_01";
     doc["dev"]["mf"]="VIBR";
     doc["dev"]["sw"]=SW_VERSION;
@@ -74,8 +74,6 @@ boolean sendMqttMsg(const char* topic,DynamicJsonDocument doc){
     String jsonBuffer;
     size_t n = serializeJson(doc, jsonBuffer);
     bool published=client.publish(topic, jsonBuffer.c_str(), n);
-    Serial.println(topic);
-    Serial.println(jsonBuffer);
     return published;
 }
 
@@ -83,7 +81,7 @@ void MQTT_DiscoveryMsg_Climate(){
   
   DynamicJsonDocument doc(4096);
 
-  doc["name"] = "Boiler Thermostat";
+  doc["name"] = "Boiler";
   doc["dev_cla"] = "climate";
   doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_CLIMATE";;
 
@@ -94,7 +92,8 @@ void MQTT_DiscoveryMsg_Climate(){
   doc["temperature_unit"]= TEMPERATURE_UNIT;
   doc["temp_step"]= TEMPERATURE_STEP;
   doc["optimistic"]=OPTIMISTIC;
-
+  doc["retain"]=true;
+  doc["qos"]=0;
   doc["current_temperature_topic"]=CURRENT_TEMP_STATE_TOPIC;
   doc["current_temperature_template"]="{{ value_json.temp }}";
   
@@ -205,7 +204,7 @@ void MQTT_DiscoveryMsg_Sensor_BoilerTemperature(){
 
   DynamicJsonDocument doc(4096);
 
-  doc["name"] = "Boiler Temperature";
+  doc["name"] = "Boiler temperature";
   doc["dev_cla"] = "temperature";
   doc["unit_of_measurement"] = "°C";
   
@@ -227,7 +226,7 @@ void MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature(){
 
   DynamicJsonDocument doc(4096);
 
-  doc["name"] = "Boiler Target Temperature";
+  doc["name"] = "Boiler target temperature";
   doc["dev_cla"] = "temperature";
   doc["unit_of_measurement"] = "°C";
   doc["suggested_display_precision"]=2;
@@ -249,7 +248,7 @@ void MQTT_DiscoveryMsg_Sensor_IntegralError(){
 
   DynamicJsonDocument doc(2048);
 
-  doc["name"] = "Boiler Integral Error";
+  doc["name"] = "Boiler integral error";
   doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_IERR";
   doc["dev_cla"] = "temperature";
   doc["qos"]=0;
@@ -269,7 +268,7 @@ void MQTT_DiscoveryMsg_Sensor_dwhTemperature(){
 
   DynamicJsonDocument doc(4096);
 
-  doc["name"] = "DHW Temperature";
+  doc["name"] = "DHW temperature";
   doc["dev_cla"] = "temperature";
   doc["unit_of_measurement"] = "°C";
   doc["suggested_display_precision"]=2;
@@ -318,7 +317,7 @@ void MQTT_DiscoveryMsg_Number_MaxModulationLevel(){
 
   DynamicJsonDocument doc(2048);
 
-  doc["name"] = "Max Modulation";
+  doc["name"] = "Max modulation";
   doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_MAXMODLVL";
   doc["icon"]="mdi:sine-wave";
 
@@ -347,7 +346,7 @@ void MQTT_DiscoveryMsg_Number_LowBandTemperature(){
 
   DynamicJsonDocument doc(2048);
 
-  doc["name"] = "Low Band temperature";
+  doc["name"] = "Low band temperature";
   doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_LBTEMP";
   doc["icon"]="mdi:sine-wave";
 
@@ -376,7 +375,7 @@ void MQTT_DiscoveryMsg_Number_HighBandTemperature(){
 
   DynamicJsonDocument doc(2048);
 
-  doc["name"] = "High Band temperature";
+  doc["name"] = "High band temperature";
   doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_HBTEMP";
   doc["icon"]="mdi:sine-wave";
 
@@ -533,7 +532,7 @@ void MQTT_DiscoveryMsg_Switch_EnableLog(){
   
   doc["qos"]=0;
   doc["retain"]=true;
-  doc["entity_category"]="config";
+  doc["entity_category"]="diagnostic";
   doc["optimistic"]=OPTIMISTIC;
   
   doc["state_topic"]=ENABLE_OT_LOG_STATE_TOPIC;
@@ -547,16 +546,13 @@ void MQTT_DiscoveryMsg_Switch_EnableLog(){
 
 }
 
-// IP
-// MAC 
-// PING
 void MQTT_DiscoveryMsg_Text_WIFI_SSID(){
   
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "WiFi SSID";
   doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_WIFI_SSID";
-  doc["icon"]="mdi:radiology-box-outline";
+  doc["icon"]="mdi:wifi";
   
   doc["qos"]=0;
   doc["retain"]=true;
@@ -578,11 +574,12 @@ void MQTT_DiscoveryMsg_Text_WIFI_RSSI(){
 
   doc["name"] = "WiFi RSSI";
   doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_WIFI_RSSI";
-  doc["icon"]="mdi:radiology-box-outline";
+  doc["icon"]="mdi:wifi-strength-1";
   
   doc["qos"]=0;
   doc["retain"]=true;
   doc["entity_category"]="diagnostic";
+  doc["unit_of_measurement"]="dBm";
   doc["state_topic"]=WIFI_RSSI_STATE_TOPIC;
   doc["value_template"]="{{ value_json.value }}";
   
@@ -600,7 +597,7 @@ void MQTT_DiscoveryMsg_Text_IpAddr(){
 
   doc["name"] = "IP Addr";
   doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_IP_ADDR";
-  doc["icon"]="mdi:radiology-box-outline";
+  doc["icon"]="mdi:ip-network";
   
   doc["qos"]=0;
   doc["retain"]=true;
@@ -622,7 +619,7 @@ void MQTT_DiscoveryMsg_Text_MacAddr(){
 
   doc["name"] = "Mac Addr";
   doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_MAC_ADDR";
-  doc["icon"]="mdi:radiology-box-outline";
+  doc["icon"]="mdi:web";
   
   doc["qos"]=0;
   doc["retain"]=true;
@@ -644,8 +641,9 @@ void MQTT_DiscoveryMsg_Text_PingAlive(){
 
   doc["name"] = "Ping Alive";
   doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_PING_ALIVE";
-  doc["icon"]="mdi:radiology-box-outline";
-  
+  doc["icon"]="mdi:heart-pulse";
+  doc["unit_of_measurement"]="s";
+
   doc["qos"]=0;
   doc["retain"]=true;
   doc["entity_category"]="diagnostic";
@@ -748,7 +746,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       ESP_LOGE(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] is null",p);
     }
   }else if (topicStr == MODE_SET_TOPIC) {
-    if (!strcmp(p,"heat")){
+    if (!strcmp(p,"heat") && bCentralHeatingEnable==true){
       
       pubResult=publishToTopicStr(p,MODE_STATE_TOPIC.c_str(),"mode",true); // Publish the new température;
       if (pubResult==true){
@@ -934,11 +932,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
   else if (topicStr == HBAND_TEMP_SET_TOPIC) {
     float ophi1 = atof(p);
     if (!isnan(ophi1) && isValidNumber(p) && ophi1>oplo) {
-      bool res=publishToTopicFloat(ophi1,HBAND_TEMP_STATE_TOPIC.c_str(),"temp",true);
-      if (res==false)
-        Serial.println("false send");
+      pubResult=publishToTopicFloat(ophi1,HBAND_TEMP_STATE_TOPIC.c_str(),"temp",true);
+      if (pubResult==true){
         ophi = ophi1;
-      ESP_LOGI(LOG_TAG,"HBAND_TEMP_SET_TOPIC high band:[%d]",ophi);
+        ESP_LOGI(LOG_TAG,"HBAND_TEMP_SET_TOPIC high band:[%d]",ophi);
+      }
     }else{
       ESP_LOGE(LOG_TAG,"HBAND_TEMP_SET_TOPIC high band error");
     }
@@ -1026,9 +1024,7 @@ bool publishToTopicStr(char * value,const char *topic,const char * key,bool reta
   DynamicJsonDocument doc(512);
   String jsonBuffer;
   doc[key]=(char *)value;
-  size_t n = serializeJson(doc, jsonBuffer);
-  Serial.println(jsonBuffer);
-  
+  size_t n = serializeJson(doc, jsonBuffer);  
   bool published=client.publish(topic, jsonBuffer.c_str(), n,retain);
   return published;
 }
@@ -1042,8 +1038,6 @@ String jsonBuffer;
 doc["temp"]=19;
 
 size_t n = serializeJson(doc, jsonBuffer);
-Serial.println(jsonBuffer);
-
 bool published=client.publish(CURRENT_TEMP_STATE_TOPIC.c_str(), jsonBuffer.c_str(), n);
  
 }
@@ -1068,8 +1062,6 @@ String jsonBuffer;
 doc["temp"]=tp;
 
 size_t n = serializeJson(doc, jsonBuffer);
-Serial.println(jsonBuffer);
-
 bool published=client.publish(TEMP_SETPOINT_STATE_TOPIC.c_str(), jsonBuffer.c_str(), n);
  
 }
