@@ -14,7 +14,7 @@ ______________________
 #ifndef _CONFIG_
 #define _CONFIG_
 
-static const char * SW_VERSION="0.39";
+static const char * SW_VERSION="0.40";
 
 // MOVE TO pwd.h
 
@@ -24,6 +24,7 @@ static const char * SW_VERSION="0.39";
 //static const char* MQTT_SERVER = "";
 //static const char* MQTT_USER = "";
 //static const char* MQTT_PASS = "";
+
 static const int   MQTT_PORT = 1883;
 
 static const char * MQTT_DEVICENAME="opentherm-Boiler";
@@ -218,54 +219,3 @@ const String LOG_GET_TOPIC = BASE_TOPIC + "log";
 #endif
 
 
-// SAMPLE 
-
-/*
-
-{
-  "name": "Boiler Thermostat",
-  "unit_of_meas": "%",
-  "dev_cla": "climate",
-  "frc_upd": true,
-  "val_tpl": "{{ value_json.value }}",
-  "uniq_id": "OT_B_01",
-  "availability": {
-    "topic": "homeassistant/sensor/opentherm-thermostat/status",
-    "payload_available": "ONLINE",
-    "payload_not_available": "OFFLINE",
-    "value_template": "{{ value_json.status }}"
-  },
-  "precision": 0.5,
-  "initial": 19,
-  "min_temp": 5,
-  "max_temp": 30,
-  "temperature_unit": "C",
-  "temp_step": 0.5,
-  "optimistic": false,
-  "current_temperature_topic": "homeassistant/sensor/opentherm-thermostat/current-temperature/state",
-  "current_temperature_template": "{{ value_json.temperature }}",
-  "temperature_command_topic": "homeassistant/sensor/opentherm-thermostat/setpoint-temperature/set",
-  "temperature_command_template": "{{ value_json.temperature }}",
-  "temperature_state_topic": "homeassistant/sensor/opentherm-thermostat/setpoint-temperature/state",
-  "temperature_state_template": "{{ value_json.temperature }}",
-  "mode_command_topic": "homeassistant/sensor/opentherm-thermostat/mode/set",
-  "mode_command_template": "{{ value_json.mode }}",
-  "mode_state_topic": "homeassistant/sensor/opentherm-thermostat/mode/state",
-  "mode_state_template": "{{ value_json.mode }}",
-  "modes": [
-    "heat",
-    "off"
-  ],
-  "dev": {
-    "ids": [
-      "opentherm-boiler"
-    ],
-    "name": "OpenTherm Boiler Master Thermostat",
-    "mdl": "ESP32_MASTER_OT_01",
-    "mf": "DIYLESS",
-    "sw": "0.34",
-    "hw_version": "1.0"
-  }
-}
-
-*/
