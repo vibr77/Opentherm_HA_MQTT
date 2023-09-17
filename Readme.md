@@ -30,25 +30,59 @@ If a room has a current temperature that is lower to the setpoint, then the ther
 
 ### Home Assistant exposed entities & parameters
 
-Control & sensors
+Control Sensors, 
 ---
 
+Control
+---
 * Climate: Boiler Thermostat
-* Sensor: Boiler Flame
-* Sensor: Boiler Temperature
-* Sensor: Central Heating
-* Sensor: Openther log
-* Sensor: Water Heating
+
+Sensor
+---
+* Sensor: Boiler integral error
+* Sensor: Boiler water return temperature
+* Sensor: Boiler target temperature
+* Sensor: Boiler current temperature
+* Sensor: Boiler Flame (boolean)
+* sensor: Boiler Flame level (modulation)
+* Sensor: Central Heating (boolean)
+* Sensor: Domestic Water Heating (boolean)
+* Sensor: Domestic Water temeprature
 
 Configuration:
 ---
-* Switch: Enable central heating
-* Switch: Enable OT Log
-* Switch: Enable Water Heating
+* Switch: Enable Central Heating
+* Switch: Enable Domestic Water Heating
+* Number: Domestic Water Temperature
 * Number: Max Modulation Level
 * Number: High bound temperature
 * Number: Low bound temperature
-* Number: No setpoint temperature override 
+* Number: No setpoint temperature override
+
+
+Diagnostic:
+---
+* Switch: Enable OT Log
+* Text: Openther log
+* Text: WiFi IP Addr
+* Text: WiFi Mac Addr
+* Text: WiFi SSID
+* Text: WiFi RSSI
+* Text: Ping Alive
+
+#### Sensor: Boiler integral error  - PID 
+([Wikipedia link to Proportional-Integral-Derivative]https://en.wikipedia.org/wiki/Proportional–integral–derivative_controller)
+Proportional-Integral-Derivative (PID) control algorithm is implemented to determine the best efficient boiler temperature to reach the set-point temperature (sp) from a giving thermostat temprature (p).
+The integral in a PID controller is the sum of the instantaneous error over time and gives the accumulated offset that should have been corrected previously.
+
+#### Sensor: Boiler water return temperature
+Represent of the temperature of water returning in the circuit of heating the house.
+
+#### Sensor: Boiler target temperature
+
+
+
+
 
 
 
