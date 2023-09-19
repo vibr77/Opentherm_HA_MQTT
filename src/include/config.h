@@ -83,6 +83,8 @@ static const char * DISCOVERY_IP_ADDR_TOPIC="homeassistant/sensor/opentherm-ther
 static const char * DISCOVERY_MAC_ADDR_TOPIC=  "homeassistant/sensor/opentherm-thermostat/mac_addr/config";
 static const char * DISCOVERY_PING_ALIVE_TOPIC="homeassistant/sensor/opentherm-thermostat/ping_alive/config";
 
+static const char * DISCOVERY_INIT_DEFAULT_VALUES_TOPIC="homeassistant/button/opentherm-thermostat/init_default_values/config";
+
 static const char * DISCOVERY_OT_LOG_TOPIC = "homeassistant/sensor/opentherm-thermostat/ot_log/config";
 
 static const char * AVAILABILITY_TOPIC = "homeassistant/opentherm-thermostat/status";
@@ -166,7 +168,7 @@ static const char * IP_ADDR_STATE_TOPIC = "homeassistant/opentherm-thermostat/ip
 static const char * MAC_ADDR_STATE_TOPIC = "homeassistant/opentherm-thermostat/mac_addr/state";
 
 static const char * PING_ALIVE_STATE_TOPIC = "homeassistant/opentherm-thermostat/ping_alive/state";
-
+static const char * INIT_DEFAULT_VALUES_TOPIC = "homeassistant/opentherm-thermostat/init_default_value/state";
 
 // logs topic
 static const char * LOG_GET_TOPIC = "homeassistant/opentherm-thermostat/log";

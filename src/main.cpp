@@ -50,7 +50,21 @@ int status = WL_IDLE_STATUS;
 void IRAM_ATTR handleInterrupt() {
     ot.handleInterrupt();
 }
-
+/*
+typedef enum {
+    ESP_RST_UNKNOWN,    //!< Reset reason can not be determined
+    ESP_RST_POWERON,    //!< Reset due to power-on event
+    ESP_RST_EXT,        //!< Reset by external pin (not applicable for ESP32)
+    ESP_RST_SW,         //!< Software reset via esp_restart
+    ESP_RST_PANIC,      //!< Software reset due to exception/panic
+    ESP_RST_INT_WDT,    //!< Reset (software or hardware) due to interrupt watchdog
+    ESP_RST_TASK_WDT,   //!< Reset due to task watchdog
+    ESP_RST_WDT,        //!< Reset due to other watchdogs
+    ESP_RST_DEEPSLEEP,  //!< Reset after exiting deep sleep mode
+    ESP_RST_BROWNOUT,   //!< Brownout reset (software or hardware)
+    ESP_RST_SDIO,       //!< Reset over SDIO
+} esp_reset_reason_t;
+*/
 
 uint8_t requests[] = {
   OpenThermMessageID::Status, // READ
@@ -187,6 +201,8 @@ void connectMQTT(){
 
       //client.subscribe(SETPOINT_OVERRIDE_STATE_TOPIC);
       client.subscribe(SETPOINT_OVERRIDE_SET_TOPIC);
+      
+      client.subscribe(INIT_DEFAULT_VALUES_TOPIC);
 
       ESP_LOGI("MAIN","Connected to MQTT");
      
@@ -223,21 +239,8 @@ void web_otcmd(AsyncWebServerRequest * request){
   unsigned long resp = ot.sendRequest(rqst);
   
   Serial.println(resp);
-  logOTRequest(resp);
+  //logOTRequest(resp);
 
-}
-
-void logOTRequest(unsigned long response){
-    
-  OpenThermMessageID id = ot.getDataID(response);
-  uint16_t data = ot.getUInt(response);
-  float f = ot.getFloat(response);
-  OpenThermMessageType mtype=ot.getMessageType(response);
-  const char * mstr=ot.messageTypeToString(mtype);
-
-  Serial.print(mstr);
-  Serial.print(" ->" + strMsgId[id] + "=");
-  Serial.println(data/256);
 }
 
 void setup(){
@@ -295,6 +298,7 @@ void setup(){
   MQTT_DiscoveryMsg_Text_IpAddr();
   MQTT_DiscoveryMsg_Text_MacAddr();
   MQTT_DiscoveryMsg_Text_PingAlive();
+  MQTT_DiscoveryMsg_Button_InitDefValues();
 
   publishAvailable();
   //publishInitValue2();
@@ -314,6 +318,11 @@ void setup(){
   
   esp_task_wdt_init(WDT_TIMEOUT, true);             // enable panic so ESP32 restarts
   esp_task_wdt_add(NULL);                           // add current thread to WDT watch
+
+  esp_reset_reason_t BootReason = esp_reset_reason();
+  if ( BootReason == ESP_RST_TASK_WDT  ) {                 // Reset due to task watchdog.
+      Serial.println("Reboot was because of WDT!!"); // TODO IMPLEMENTATION OF MQTT PUBLISH
+  }
 }
 
 void updateDataDiag(){

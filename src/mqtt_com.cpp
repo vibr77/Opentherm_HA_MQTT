@@ -747,6 +747,30 @@ void MQTT_DiscoveryMsg_Text_PingAlive(){
 
 }
 
+void MQTT_DiscoveryMsg_Button_InitDefValues(){
+  
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "Init default values";
+  char ID[64];
+  sprintf(ID,"%s_INIT_VALUES",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
+  doc["icon"]="mdi:refresh-auto";
+
+  doc["qos"]=0;
+  doc["retain"]=true;
+  doc["entity_category"]="diagnostic";
+  doc["command_topic"]=INIT_DEFAULT_VALUES_TOPIC;
+  
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_INIT_DEFAULT_VALUES_TOPIC,doc);
+
+}
+
 void callback(char* topic, byte* payload, unsigned int length) {
   ESP_LOGD(LOG_TAG,"MQTT Callback topic:[%s]",topic);
 
@@ -755,12 +779,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
   p[length]=0;
   bool pubResult=false;
 
-  const String topicStr(topic);
-
   ESP_LOGD(LOG_TAG,"MQTT Callback topic:[%s] payload:[%s]",topic,p);
 
   // CURRENT TEMPERATURE
-  if (topicStr == CURRENT_TEMP_STATE_TOPIC) {
+  if (!strcmp(topic, CURRENT_TEMP_STATE_TOPIC)) {
     float t1=getPayloadFloatValue("temp",p);
     if (t1>0) {
       t=t1;
@@ -771,7 +793,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       ESP_LOGE(LOG_TAG,"CURRENT_TEMP_STATE_TOPIC value <= 0 error");
     }
   }
-  else if (topicStr == CURRENT_TEMP_SET_TOPIC) {
+  else if (!strcmp(topic, CURRENT_TEMP_SET_TOPIC)) {
     float t1=atof(p);
     if (!isnan(t1) && isValidNumber(p)) {
       pubResult=publishToTopicFloat(t1,CURRENT_TEMP_STATE_TOPIC,"temp",true); // Publish the new température;
@@ -787,7 +809,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
   // SETPOINT
-  else if (topicStr == TEMP_SETPOINT_STATE_TOPIC) {
+  else if (!strcmp(topic, TEMP_SETPOINT_STATE_TOPIC)) {
     float sp1=getPayloadFloatValue("temp",p);
     ESP_LOGD(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC payload:[%s] conversion to float:[%f]",p,sp1);
     if (sp1>0) {
@@ -795,13 +817,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
       sp=sp1;
       unsigned long now = millis();
       lastSpSet=now;
-
     }else{
       ESP_LOGE(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC value <= 0 error");
-    
     }
   
-  }else if (topicStr == TEMP_SETPOINT_SET_TOPIC) {
+  }else if (!strcmp(topic, TEMP_SETPOINT_SET_TOPIC)) {
     float sp1 = atof(p);
     if (!isnan(sp1) && isValidNumber(p)) {
       
@@ -816,7 +836,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   
   // MODE 
-  else if (topicStr == MODE_STATE_TOPIC) {
+  else if (!strcmp(topic, MODE_STATE_TOPIC)) {
     
     char * mode=getPayloadCharValue("mode",p);
     if (mode!=NULL){
@@ -834,7 +854,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }else{
       ESP_LOGE(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] is null",p);
     }
-  }else if (topicStr == MODE_SET_TOPIC) {
+  }else if (!strcmp(topic, MODE_SET_TOPIC)) {
     if (!strcmp(p,"heat") && bCentralHeatingEnable==true){
       
       pubResult=publishToTopicStr(p,MODE_STATE_TOPIC,"mode",true); // Publish the new température;
@@ -857,7 +877,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
   // TEMP_DWH
-  else if (topicStr == TEMP_DHW_STATE_TOPIC) {
+  else if (!strcmp(topic, TEMP_DHW_STATE_TOPIC)) {
     float dwhTarget1=getPayloadFloatValue("temp",p);
     if (dwhTarget1>0) {
       dwhTarget = dwhTarget1;
@@ -867,7 +887,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       ESP_LOGE(LOG_TAG,"TEMP_DHW_STATE_TOPIC value <= 0 error");
     }
   }
-  else if (topicStr == TEMP_DHW_SET_TOPIC) {
+  else if (!strcmp(topic, TEMP_DHW_SET_TOPIC)) {
     float dwhTarget1 = atof(p);
     if (!isnan(dwhTarget1) && isValidNumber(p)) {
       pubResult=publishToTopicFloat(dwhTarget1,TEMP_DHW_STATE_TOPIC,"temp");
@@ -883,7 +903,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
   // ENABLE CHEATING 
-  else if (topicStr == ENABLE_CHEATING_STATE_TOPIC) {
+  else if (!strcmp(topic, ENABLE_CHEATING_STATE_TOPIC)) {
     if (!strcmp(p, "1")){
       bCentralHeatingEnable=true;
       bParamChanged=true;
@@ -896,7 +916,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       ESP_LOGE(LOG_TAG,"ENABLE_CHEATING_STATE_TOPIC unknow param value error");
     }
   }
-  else if (topicStr == ENABLE_CHEATING_SET_TOPIC) {
+  else if (!strcmp(topic, ENABLE_CHEATING_SET_TOPIC)) {
     if (!strcmp(p, "1")){
       pubResult=client.publish(ENABLE_CHEATING_STATE_TOPIC, p, length,true);
       if (pubResult==true){
@@ -921,7 +941,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
   // ENABLE WHEATING 
-  else if (topicStr == ENABLE_WHEATING_STATE_TOPIC) {
+  else if (!strcmp(topic, ENABLE_WHEATING_STATE_TOPIC)) {
     if (!strcmp(p, "1")){
       bWaterHeatingEnable=true;
       bParamChanged=true;
@@ -934,7 +954,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       ESP_LOGE(LOG_TAG,"ENABLE_WHEATING_STATE_TOPIC unknow param value error");
     }
   }
-  else if (topicStr == ENABLE_WHEATING_SET_TOPIC) {
+  else if (!strcmp(topic, ENABLE_WHEATING_SET_TOPIC)) {
     if (!strcmp(p, "1")){
       pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC, p, length,true);
       if (pubResult==true){
@@ -957,7 +977,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
   //MAX_MODULATION_LEVEL
-  else if (topicStr == MAX_MODULATION_LEVEL_STATE_TOPIC) {
+  else if (!strcmp(topic, MAX_MODULATION_LEVEL_STATE_TOPIC)) {
     int MaxModLevel1=(int)getPayloadFloatValue("level",p);
     if (MaxModLevel1>0) {
       MaxModLevel = MaxModLevel1;
@@ -968,7 +988,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
 
   }
-  else if (topicStr == MAX_MODULATION_LEVEL_SET_TOPIC) {
+  else if (!strcmp(topic, MAX_MODULATION_LEVEL_SET_TOPIC)) {
     int MaxModLevel1 = atoi(p);
     if (!isnan(MaxModLevel1) && isValidNumber(p)) {
       pubResult=publishToTopicFloat(MaxModLevel1,MAX_MODULATION_LEVEL_STATE_TOPIC,"level",true);
@@ -983,7 +1003,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
   //LBAND_TEMP_STATE // OK
-  else if (topicStr == LBAND_TEMP_STATE_TOPIC) {
+  else if (!strcmp(topic, LBAND_TEMP_STATE_TOPIC)) {
     int oplo1=getPayloadFloatValue("temp",p);
     if (oplo1>0 && oplo1<ophi) {
       oplo = oplo1;
@@ -992,7 +1012,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       ESP_LOGE(LOG_TAG,"LBAND_TEMP_STATE_TOPIC value <= 0 or >ophi error");
     }
   }
-  else if (topicStr == LBAND_TEMP_SET_TOPIC) {
+  else if (!strcmp(topic, LBAND_TEMP_SET_TOPIC)) {
     int oplo1 = atoi(p);
     if (!isnan(oplo1) && isValidNumber(p) && oplo1<ophi) {
       pubResult=publishToTopicFloat(oplo1,LBAND_TEMP_STATE_TOPIC,"temp",true);
@@ -1009,7 +1029,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
   //HBAND_TEMP_STATE // OK
-  else if (topicStr == HBAND_TEMP_STATE_TOPIC) {
+  else if (!strcmp(topic, HBAND_TEMP_STATE_TOPIC)) {
     int ophi1=getPayloadFloatValue("temp",p);
     if (ophi1>0 && ophi1>oplo) {
       ophi = ophi1;
@@ -1018,7 +1038,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       ESP_LOGE(LOG_TAG,"HBAND_TEMP_STATE_TOPIC value <= 0 or <oplo error");
     }
   }
-  else if (topicStr == HBAND_TEMP_SET_TOPIC) {
+  else if (!strcmp(topic, HBAND_TEMP_SET_TOPIC)) {
     float ophi1 = atof(p);
     if (!isnan(ophi1) && isValidNumber(p) && ophi1>oplo) {
       pubResult=publishToTopicFloat(ophi1,HBAND_TEMP_STATE_TOPIC,"temp",true);
@@ -1032,7 +1052,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
   //NOSP_OVERRIDE_TEMP_STATE_TOPIC //OK
-  else if (topicStr == NOSP_OVERRIDE_TEMP_STATE_TOPIC) {
+  else if (!strcmp(topic, NOSP_OVERRIDE_TEMP_STATE_TOPIC)) {
     float nosp_override1=getPayloadFloatValue("temp",p);
     if (nosp_override1>0) {
       nosp_override = nosp_override1;
@@ -1041,7 +1061,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       ESP_LOGE(LOG_TAG,"NOSP_OVERRIDE_TEMP_STATE_TOPIC value <= 0 error");
     }
   }
-  else if (topicStr == NOSP_OVERRIDE_TEMP_SET_TOPIC) {
+  else if (!strcmp(topic, NOSP_OVERRIDE_TEMP_SET_TOPIC)) {
     float nosp_override1 =atof(p);
     if (!isnan(nosp_override1) && isValidNumber(p)) {
       publishToTopicFloat(nosp_override1,NOSP_OVERRIDE_TEMP_STATE_TOPIC,"temp");

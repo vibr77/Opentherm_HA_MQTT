@@ -12,7 +12,6 @@ void connectWIFI();
 void connectMQTT();
 void IRAM_ATTR handleInterrupt();
 void web_otcmd(AsyncWebServerRequest * request);
-void logOTRequest(unsigned long response);
 void updateData();
 void updateDataDiag();
 void processResponse(unsigned long response, OpenThermResponseStatus status) ;

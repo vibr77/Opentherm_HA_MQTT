@@ -36,6 +36,8 @@ void MQTT_DiscoveryMsg_Text_IpAddr();
 void MQTT_DiscoveryMsg_Text_MacAddr();
 void MQTT_DiscoveryMsg_Text_PingAlive();
 
+void MQTT_DiscoveryMsg_Button_InitDefValues();
+
 
 
 void callback(char* topic, byte* payload, unsigned int length);
