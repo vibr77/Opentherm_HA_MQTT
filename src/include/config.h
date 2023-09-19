@@ -1,7 +1,7 @@
 
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.34
+ \ \ / /_ _| _ ) _ \      Release: 0.40
   \ V / | || _ \   /      Date: 20230709
    \_/ |___|___/_|_\      Description: ESP32 Mini Home Assistant Opentherm Master Thermostat
                 2023      Licence: Creative Commons
@@ -28,7 +28,7 @@ static const char * SW_VERSION="0.40";
 static const int   MQTT_PORT = 1883;
 
 static const char * MQTT_DEVICENAME="opentherm-Boiler";
-static const String MQTT_DEV_UNIQUE_ID="OT_B_01";
+static const char * MQTT_DEV_UNIQUE_ID="OT_B_01";
 
 static const int HTTP_PORT = 80;
 
@@ -54,168 +54,122 @@ static const float HIGH_BAND_TEMP=65;
 static const float NO_SP_TEMP_OVERRIDE=25;
 static const int MAX_MODULATION_LEVEL=100;
 
-static const String BASE_TOPIC = "homeassistant/opentherm-thermostat/";
+static const char * BASE_TOPIC="homeassistant/opentherm-thermostat/";
 
-static const String CLIMATE_BASE_TOPIC = "homeassistant/climate/opentherm-thermostat/";
-static const String DISCOVERY_CLIMATE_TOPIC = CLIMATE_BASE_TOPIC + "config";
+static const char * DISCOVERY_CLIMATE_TOPIC =       "homeassistant/climate/opentherm-thermostat/config";
+static const char * DISCOVERY_FLAME_TOPIC =         "homeassistant/binary_sensor/opentherm-thermostat/flame/config";
+static const char * DISCOVERY_FLAME_LEVEL_TOPIC =   "homeassistant/sensor/opentherm-thermostat/flame_level/config";
+static const char * DISCOVERY_WATER_HEATING_TOPIC =  "homeassistant/binary_sensor/opentherm-thermostat/waterheating/config";
 
-static const String FLAME_BASE_TOPIC = "homeassistant/binary_sensor/opentherm-thermostat/flame/";
-static const String DISCOVERY_FLAME_TOPIC = FLAME_BASE_TOPIC + "config";
+static const char * DISCOVERY_CENTRAL_HEATING_TOPIC ="homeassistant/binary_sensor/opentherm-thermostat/centralheating/config";
+static const char * DISCOVERY_BOILER_TEMP_TOPIC= "homeassistant/sensor/opentherm-thermostat/boilertemp/config";
+static const char * DISCOVERY_BOILER_RETURN_TEMP_TOPIC="homeassistant/sensor/opentherm-thermostat/boiler_return_temp/";
+static const char * DISCOVERY_BOILER_TARGET_TEMP_TOPIC= "homeassistant/sensor/opentherm-thermostat/boiler_target_temp/config";
 
-static const String FLAME_LEVEL_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/flame_level/";
-static const String DISCOVERY_FLAME_LEVEL_TOPIC = FLAME_LEVEL_BASE_TOPIC + "config";
+static const char * DISCOVERY_INTEGRAL_ERROR_TOPIC="homeassistant/sensor/opentherm-thermostat/integral_error/config";
+static const char * DISCOVERY_DWH_TEMP_TOPIC="homeassistant/sensor/opentherm-thermostat/dwhtemp/config";
+static const char * DISCOVERY_MAX_MODLVL_TOPIC="homeassistant/number/opentherm-thermostat/maxmodulationlevel/config";
+static const char * DISCOVERY_HBAND_TEMP_TOPIC="homeassistant/number/opentherm-thermostat/high_band_temperature/config";
+static const char * DISCOVERY_LBAND_TEMP_TOPIC= "homeassistant/number/opentherm-thermostat/low_band_temperature/config";
+static const char * DISCOVERY_NOSP_OVERRIDE_TEMP_TOPIC= "homeassistant/number/opentherm-thermostat/no_sp_temp_override/config";
+static const char * DISCOVERY_TEMP_DHW_TOPIC="homeassistant/number/opentherm-thermostat/dwh_temp/config";
+static const char * DISCOVERY_ENABLE_CHEATING_TOPIC= "homeassistant/switch/opentherm-thermostat/enable_cheating/config";
+static const char * DISCOVERY_ENABLE_WHEATING_TOPIC="homeassistant/switch/opentherm-thermostat/enable_wheating/config";
+static const char * DISCOVERY_ENABLE_OT_LOG_TOPIC="homeassistant/switch/opentherm-thermostat/enable_ot_log/config";
 
+static const char * DISCOVERY_WIFI_SSID_TOPIC="homeassistant/sensor/opentherm-thermostat/wifi_ssid/config";
+static const char * DISCOVERY_WIFI_RSSI_TOPIC= "homeassistant/sensor/opentherm-thermostat/wifi_rssi/config";
+static const char * DISCOVERY_IP_ADDR_TOPIC="homeassistant/sensor/opentherm-thermostat/ip_addr/config";
+static const char * DISCOVERY_MAC_ADDR_TOPIC=  "homeassistant/sensor/opentherm-thermostat/mac_addr/config";
+static const char * DISCOVERY_PING_ALIVE_TOPIC="homeassistant/sensor/opentherm-thermostat/ping_alive/config";
 
-static const String WATER_HEATING_BASE_TOPIC = "homeassistant/binary_sensor/opentherm-thermostat/waterheating/";
-static const String DISCOVERY_WATER_HEATING_TOPIC = WATER_HEATING_BASE_TOPIC + "config";
+static const char * DISCOVERY_OT_LOG_TOPIC = "homeassistant/sensor/opentherm-thermostat/ot_log/config";
 
-static const String CENTRAL_HEATING_BASE_TOPIC = "homeassistant/binary_sensor/opentherm-thermostat/centralheating/";
-static const String DISCOVERY_CENTRAL_HEATING_TOPIC = CENTRAL_HEATING_BASE_TOPIC + "config";
+static const char * AVAILABILITY_TOPIC = "homeassistant/opentherm-thermostat/status";
 
-static const String BOILERTEMP_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/boilertemp/";
-static const String DISCOVERY_BOILER_TEMP_TOPIC = BOILERTEMP_BASE_TOPIC + "config";
-
-static const String BOILER_RETURN_TEMP_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/boiler_return_temp/";
-static const String DISCOVERY_BOILER_RETURN_TEMP_TOPIC = BOILER_RETURN_TEMP_BASE_TOPIC + "config";
-
-static const String BOILER_TARGET_TEMP_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/boiler_target_temp/";
-static const String DISCOVERY_BOILER_TARGET_TEMP_TOPIC = BOILER_TARGET_TEMP_BASE_TOPIC + "config";
-
-static const String INTEGRAL_ERROR_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/integral_error/";
-static const String DISCOVERY_INTEGRAL_ERROR_TOPIC = INTEGRAL_ERROR_BASE_TOPIC + "config";
-
-static const String DWHTEMP_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/dwhtemp/";
-static const String DISCOVERY_DWH_TEMP_TOPIC = DWHTEMP_BASE_TOPIC + "config";
-
-
-static const String MAX_MODLVL_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/maxmodulationlevel/";
-static const String DISCOVERY_MAX_MODLVL_TOPIC = MAX_MODLVL_BASE_TOPIC + "config";
-
-static const String HBAND_TEMP_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/high_band_temperature/";
-static const String DISCOVERY_HBAND_TEMP_TOPIC = HBAND_TEMP_BASE_TOPIC + "config";
-
-static const String LBAND_TEMP_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/low_band_temperature/";
-static const String DISCOVERY_LBAND_TEMP_TOPIC = LBAND_TEMP_BASE_TOPIC + "config";
-
-static const String NOSP_OVERRIDE_TEMP_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/no_sp_temp_override/";
-static const String DISCOVERY_NOSP_OVERRIDE_TEMP_TOPIC = NOSP_OVERRIDE_TEMP_BASE_TOPIC + "config";
-
-static const String DISCOVERY_TEMP_DHW_BASE_TOPIC = "homeassistant/number/opentherm-thermostat/dwh_temp/";
-static const String DISCOVERY_TEMP_DHW_TOPIC  = DISCOVERY_TEMP_DHW_BASE_TOPIC + "config";
-
-
-static const String ENABLE_CHEATING_BASE_TOPIC = "homeassistant/switch/opentherm-thermostat/enable_cheating/";
-static const String DISCOVERY_ENABLE_CHEATING_TOPIC = ENABLE_CHEATING_BASE_TOPIC + "config";
-
-static const String ENABLE_WHEATING_BASE_TOPIC = "homeassistant/switch/opentherm-thermostat/enable_wheating/";
-static const String DISCOVERY_ENABLE_WHEATING_TOPIC = ENABLE_WHEATING_BASE_TOPIC + "config";
-
-static const String ENABLE_OT_LOG_BASE_TOPIC = "homeassistant/switch/opentherm-thermostat/enable_ot_log/";
-static const String DISCOVERY_ENABLE_OT_LOG_TOPIC = ENABLE_OT_LOG_BASE_TOPIC + "config";
-
-static const String OT_LOG_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/ot_log/";
-static const String DISCOVERY_OT_LOG_TOPIC = OT_LOG_BASE_TOPIC + "config";
-
-static const String WIFI_SSID_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/wifi_ssid/";
-static const String DISCOVERY_WIFI_SSID_TOPIC = WIFI_SSID_BASE_TOPIC + "config";
-
-static const String WIFI_RSSI_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/wifi_rssi/";
-static const String DISCOVERY_WIFI_RSSI_TOPIC = WIFI_RSSI_BASE_TOPIC + "config";
-
-static const String IP_ADDR_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/ip_addr/";
-static const String DISCOVERY_IP_ADDR_TOPIC = IP_ADDR_BASE_TOPIC + "config";
-
-static const String MAC_ADDR_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/mac_addr/";
-static const String DISCOVERY_MAC_ADDR_TOPIC = MAC_ADDR_BASE_TOPIC + "config";
-
-static const String PING_ALIVE_BASE_TOPIC = "homeassistant/sensor/opentherm-thermostat/ping_alive/";
-static const String DISCOVERY_PING_ALIVE_TOPIC = PING_ALIVE_BASE_TOPIC + "config";
-
-const String AVAILABILITY_TOPIC = BASE_TOPIC + "status";
-
-const String CURRENT_TEMP_STATE_TOPIC = BASE_TOPIC + "current-temperature/state";
-const String CURRENT_TEMP_SET_TOPIC = BASE_TOPIC + "current-temperature/set";
+static const char *CURRENT_TEMP_STATE_TOPIC = "homeassistant/opentherm-thermostat/current-temperature/state";
+static const char * CURRENT_TEMP_SET_TOPIC = "homeassistant/opentherm-thermostat/current-temperature/set";
 
 // current temperature topics
-const String TEMP_SETPOINT_STATE_TOPIC = BASE_TOPIC + "setpoint-temperature/state";
-const String TEMP_SETPOINT_SET_TOPIC = BASE_TOPIC + "setpoint-temperature/set";
+static const char * TEMP_SETPOINT_STATE_TOPIC = "homeassistant/opentherm-thermostat/setpoint-temperature/state";
+static const char * TEMP_SETPOINT_SET_TOPIC = "homeassistant/opentherm-thermostat/setpoint-temperature/set";
 
 // working mode topics
-const String MODE_STATE_TOPIC = BASE_TOPIC + "mode/state";
-const String MODE_SET_TOPIC = BASE_TOPIC + "mode/set";
+static const char * MODE_STATE_TOPIC = "homeassistant/opentherm-thermostat/mode/state";
+static const char * MODE_SET_TOPIC = "homeassistant/opentherm-thermostat/mode/set";
 
 // Centralheating
-const String CENTRAL_HEATING_STATE_TOPIC = BASE_TOPIC + "centralheating/state";
+static const char * CENTRAL_HEATING_STATE_TOPIC = "homeassistant/opentherm-thermostat/centralheating/state";
 
 // Waterheating
-const String WATER_HEATING_STATE_TOPIC = BASE_TOPIC + "waterheating/state";
+static const char * WATER_HEATING_STATE_TOPIC = "homeassistant/opentherm-thermostat/waterheating/state";
 // Enable Central Heating
-const String ENABLE_CHEATING_STATE_TOPIC = BASE_TOPIC + "enable_cheating/state";
-const String ENABLE_CHEATING_SET_TOPIC = BASE_TOPIC + "enable_cheating/set";
+static const char * ENABLE_CHEATING_STATE_TOPIC = "homeassistant/opentherm-thermostat/enable_cheating/state";
+static const char * ENABLE_CHEATING_SET_TOPIC = "homeassistant/opentherm-thermostat/enable_cheating/set";
 
 // Enable Water Heating
-const String ENABLE_WHEATING_STATE_TOPIC = BASE_TOPIC + "enable_wheating/state";
-const String ENABLE_WHEATING_SET_TOPIC = BASE_TOPIC + "enable_wheating/set";
+static const char * ENABLE_WHEATING_STATE_TOPIC = "homeassistant/opentherm-thermostat/enable_wheating/state";
+static const char * ENABLE_WHEATING_SET_TOPIC = "homeassistant/opentherm-thermostat/enable_wheating/set";
 
 // Enable OT Log
-const String ENABLE_OT_LOG_STATE_TOPIC = BASE_TOPIC + "enable_ot_log/state";
-const String ENABLE_OT_LOG_SET_TOPIC = BASE_TOPIC + "enable_ot_log/set";
+static const char * ENABLE_OT_LOG_STATE_TOPIC = "homeassistant/opentherm-thermostat/enable_ot_log/state";
+static const char * ENABLE_OT_LOG_SET_TOPIC = "homeassistant/opentherm-thermostat/enable_ot_log/set";
 
 // OT Log
-const String OT_LOG_STATE_TOPIC = BASE_TOPIC + "ot_log/state";
-//const String OT_LOG_SET_TOPIC = BASE_TOPIC + "ot_log/set";
+static const char * OT_LOG_STATE_TOPIC = "homeassistant/opentherm-thermostat/ot_log/state";
+//static const char * OT_LOG_SET_TOPIC = "ot_log/set";
 
 // Modulation Level
 
-const String MAX_MODULATION_LEVEL_STATE_TOPIC = BASE_TOPIC + "max_modulation_level/state";
-const String MAX_MODULATION_LEVEL_SET_TOPIC = BASE_TOPIC + "max_modulation_level/set";
+static const char * MAX_MODULATION_LEVEL_STATE_TOPIC = "homeassistant/opentherm-thermostat/max_modulation_level/state";
+static const char * MAX_MODULATION_LEVEL_SET_TOPIC = "homeassistant/opentherm-thermostat/max_modulation_level/set";
 
 
-const String LBAND_TEMP_STATE_TOPIC = BASE_TOPIC + "low_band_temperature/state";
-const String LBAND_TEMP_SET_TOPIC = BASE_TOPIC + "low_band_temperature/set";
+static const char * LBAND_TEMP_STATE_TOPIC = "homeassistant/opentherm-thermostat/low_band_temperature/state";
+static const char * LBAND_TEMP_SET_TOPIC = "homeassistant/opentherm-thermostat/low_band_temperature/set";
 
-const String HBAND_TEMP_STATE_TOPIC = BASE_TOPIC + "high_band_temperature/state";
-const String HBAND_TEMP_SET_TOPIC = BASE_TOPIC + "high_band_temperature/set";
+static const char * HBAND_TEMP_STATE_TOPIC = "homeassistant/opentherm-thermostat/high_band_temperature/state";
+static const char * HBAND_TEMP_SET_TOPIC = "homeassistant/opentherm-thermostat/high_band_temperature/set";
 
-const String NOSP_OVERRIDE_TEMP_STATE_TOPIC = BASE_TOPIC + "no_sp_temp_override/state";
-const String NOSP_OVERRIDE_TEMP_SET_TOPIC = BASE_TOPIC + "no_sp_temp_override/set";
+static const char * NOSP_OVERRIDE_TEMP_STATE_TOPIC = "homeassistant/opentherm-thermostat/no_sp_temp_override/state";
+static const char * NOSP_OVERRIDE_TEMP_SET_TOPIC = "homeassistant/opentherm-thermostat/no_sp_temp_override/set";
 
 // boiler water temperature topic
-const String TEMP_BOILER_STATE_TOPIC = BASE_TOPIC + "boiler_temperature/state";
-const String TEMP_BOILER_TARGET_TEMP_STATE_TOPIC = BASE_TOPIC + "boiler_target_temperature/state";
+static const char * TEMP_BOILER_STATE_TOPIC = "homeassistant/opentherm-thermostat/boiler_temperature/state";
+static const char * TEMP_BOILER_TARGET_TEMP_STATE_TOPIC = "homeassistant/opentherm-thermostat/boiler_target_temperature/state";
 
-const String TEMP_BOILER_RETURN_STATE_TOPIC = BASE_TOPIC + "boiler_return_temperature/state";
+static const char * TEMP_BOILER_RETURN_STATE_TOPIC = "homeassistant/opentherm-thermostat/boiler_return_temperature/state";
 // debug data
-const String INTEGRAL_ERROR_STATE_TOPIC = BASE_TOPIC + "integral-error/state";
-const String FLAME_STATUS_STATE_TOPIC = BASE_TOPIC + "flame_status/state";
+static const char * INTEGRAL_ERROR_STATE_TOPIC = "homeassistant/opentherm-thermostat/integral-error/state";
+static const char * FLAME_STATUS_STATE_TOPIC = "homeassistant/opentherm-thermostat/flame_status/state";
 
-const String FLAME_LEVEL_STATE_TOPIC = BASE_TOPIC + "flame_level/state";
+static const char * FLAME_LEVEL_STATE_TOPIC = "homeassistant/opentherm-thermostat/flame_level/state";
 
 // domestic hot water temperature topic
-const String TEMP_DHW_STATE_TOPIC = BASE_TOPIC + "dhw-temperature/state";
-const String TEMP_DHW_SET_TOPIC = BASE_TOPIC + "dhw-temperature/set";
+static const char * TEMP_DHW_STATE_TOPIC = "homeassistant/opentherm-thermostat/dhw-temperature/state";
+static const char * TEMP_DHW_SET_TOPIC = "homeassistant/opentherm-thermostat/dhw-temperature/set";
 
-const String ACTUAL_TEMP_DHW_STATE_TOPIC = BASE_TOPIC + "dhw-actual-temperature/state";
+static const char * ACTUAL_TEMP_DHW_STATE_TOPIC = "homeassistant/opentherm-thermostat/dhw-actual-temperature/state";
 
 // domestic hot water enable/disable
-const String STATE_DHW_GET_TOPIC = BASE_TOPIC + "dhw-state/get";
-const String STATE_DHW_SET_TOPIC = BASE_TOPIC + "dhw-state/set";
+static const char * STATE_DHW_GET_TOPIC = "homeassistant/opentherm-thermostat/dhw-state/get";
+static const char * STATE_DHW_SET_TOPIC = "homeassistant/opentherm-thermostat/dhw-state/set";
 
 // setpoint topic
-const String SETPOINT_OVERRIDE_SET_TOPIC = BASE_TOPIC + "setpoint-override/set";
-const String SETPOINT_OVERRIDE_RESET_TOPIC = BASE_TOPIC + "setpoint-override/reset";
+static const char * SETPOINT_OVERRIDE_SET_TOPIC = "homeassistant/opentherm-thermostat/setpoint-override/set";
+static const char * SETPOINT_OVERRIDE_RESET_TOPIC = "homeassistant/opentherm-thermostat/setpoint-override/reset";
 
-const String WIFI_SSID_STATE_TOPIC = BASE_TOPIC + "wifi_ssid/state";
-const String WIFI_RSSI_STATE_TOPIC = BASE_TOPIC + "wifi_rssi/state";
+static const char * WIFI_SSID_STATE_TOPIC = "homeassistant/opentherm-thermostat/wifi_ssid/state";
+static const char * WIFI_RSSI_STATE_TOPIC = "homeassistant/opentherm-thermostat/wifi_rssi/state";
 
-const String IP_ADDR_STATE_TOPIC = BASE_TOPIC + "ip_addr/state";
-const String MAC_ADDR_STATE_TOPIC = BASE_TOPIC + "mac_addr/state";
+static const char * IP_ADDR_STATE_TOPIC = "homeassistant/opentherm-thermostat/ip_addr/state";
+static const char * MAC_ADDR_STATE_TOPIC = "homeassistant/opentherm-thermostat/mac_addr/state";
 
-const String PING_ALIVE_STATE_TOPIC = BASE_TOPIC + "ping_alive/state";
+static const char * PING_ALIVE_STATE_TOPIC = "homeassistant/opentherm-thermostat/ping_alive/state";
 
 
 // logs topic
-const String LOG_GET_TOPIC = BASE_TOPIC + "log";
+static const char * LOG_GET_TOPIC = "homeassistant/opentherm-thermostat/log";
 #endif
 
 

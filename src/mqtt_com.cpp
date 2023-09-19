@@ -5,10 +5,7 @@
 #include <PubSubClient.h>
 
 #include "include/mqtt_com.h"
-
-//#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
-
 
 extern PubSubClient client;
 
@@ -26,6 +23,7 @@ extern unsigned long lastSpSet,lastPSet;
 #define LOG_TAG "mqtt"
 
 void LogMasterParam(){
+
   ESP_LOGI(LOG_TAG,"Master Param oplo:[%f]",oplo);
   ESP_LOGI(LOG_TAG,"Master Param ophi:[%f]",ophi);
   ESP_LOGI(LOG_TAG,"Master Param sp:[%f]",sp);
@@ -88,7 +86,10 @@ void MQTT_DiscoveryMsg_Climate(){
 
   doc["name"] = "Boiler";
   doc["dev_cla"] = "climate";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_CLIMATE";;
+  
+  char ID[64];
+  sprintf(ID,"%s_CLIMATE",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
 
   doc["precision"]=PRECISION;
   doc["initial"]=INITIAL_TEMP;
@@ -118,7 +119,7 @@ void MQTT_DiscoveryMsg_Climate(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_CLIMATE_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_CLIMATE_TOPIC,doc);
 }
 
 
@@ -128,7 +129,10 @@ void MQTT_DiscoveryMsg_Sensor_Flaming(){
   DynamicJsonDocument doc(2048);
  
   doc["name"] = "Flame";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_ISFLAME";
+  char ID[64];
+  sprintf(ID,"%s_ISFLAME",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["icon"]="mdi:fire";
   doc["payload_off"]="OFF";
   doc["payload_on"]="ON";
@@ -140,7 +144,7 @@ void MQTT_DiscoveryMsg_Sensor_Flaming(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_FLAME_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_FLAME_TOPIC,doc);
 }
 
 void MQTT_DiscoveryMsg_Sensor_FlameLevel(){
@@ -151,7 +155,10 @@ void MQTT_DiscoveryMsg_Sensor_FlameLevel(){
   doc["unit_of_measurement"] = "%";
   doc["icon"]="mdi:fire";
   
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_FLAMELVL";
+  char ID[64];
+  sprintf(ID,"%s_FLAMELVL",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["qos"]=0;
   doc["state_topic"]=FLAME_LEVEL_STATE_TOPIC;
   doc["value_template"]="{{ value_json.value }}";
@@ -160,7 +167,7 @@ void MQTT_DiscoveryMsg_Sensor_FlameLevel(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_FLAME_LEVEL_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_FLAME_LEVEL_TOPIC,doc);
 
 }
 
@@ -169,7 +176,9 @@ void MQTT_DiscoveryMsg_Sensor_CentralHeating(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "Central Heating";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_CENTRALH";
+  char ID[64];
+  sprintf(ID,"%s_CENTRALH",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
   doc["icon"]="mdi:fire";
   doc["payload_off"]="OFF";
   doc["payload_on"]="ON";
@@ -181,7 +190,7 @@ void MQTT_DiscoveryMsg_Sensor_CentralHeating(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_CENTRAL_HEATING_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_CENTRAL_HEATING_TOPIC,doc);
 }
 
 void MQTT_DiscoveryMsg_Sensor_WaterHeating(){
@@ -189,7 +198,10 @@ void MQTT_DiscoveryMsg_Sensor_WaterHeating(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "DWH Heating";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_WATERH";
+  char ID[64];
+  sprintf(ID,"%s_WATERH",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["icon"]="mdi:fire";
   doc["payload_off"]="OFF";
   doc["payload_on"]="ON";
@@ -201,20 +213,22 @@ void MQTT_DiscoveryMsg_Sensor_WaterHeating(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_WATER_HEATING_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_WATER_HEATING_TOPIC,doc);
 }
 
 
 void MQTT_DiscoveryMsg_Sensor_BoilerTemperature(){
 
-  DynamicJsonDocument doc(4096);
+  DynamicJsonDocument doc(2048);
 
   doc["name"] = "Boiler temperature";
   doc["dev_cla"] = "temperature";
   doc["unit_of_measurement"] = "°C";
   
   doc["suggested_display_precision"]=2;
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_BOILERTEMP";
+  char ID[64];
+  sprintf(ID,"%s_BOILERTEMP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
   doc["qos"]=0;
   doc["state_topic"]=TEMP_BOILER_STATE_TOPIC;
   doc["value_template"]="{{ value_json.temp }}";
@@ -223,20 +237,23 @@ void MQTT_DiscoveryMsg_Sensor_BoilerTemperature(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_BOILER_TEMP_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_BOILER_TEMP_TOPIC,doc);
 
 }
 
 void MQTT_DiscoveryMsg_Sensor_BoilerReturnTemperature(){
 
-  DynamicJsonDocument doc(4096);
+  DynamicJsonDocument doc(2048);
 
   doc["name"] = "Boiler Return temperature";
   doc["dev_cla"] = "temperature";
   doc["unit_of_measurement"] = "°C";
   
   doc["suggested_display_precision"]=2;
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_BOILERRETTEMP";
+  char ID[64];
+  sprintf(ID,"%s_BOILERRETTEMP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["qos"]=0;
   doc["state_topic"]=TEMP_BOILER_RETURN_STATE_TOPIC;
   doc["value_template"]="{{ value_json.temp }}";
@@ -245,7 +262,7 @@ void MQTT_DiscoveryMsg_Sensor_BoilerReturnTemperature(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_BOILER_RETURN_TEMP_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_BOILER_RETURN_TEMP_TOPIC,doc);
 
 }
 
@@ -257,8 +274,10 @@ void MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature(){
   doc["dev_cla"] = "temperature";
   doc["unit_of_measurement"] = "°C";
   doc["suggested_display_precision"]=2;
+  char ID[64];
+  sprintf(ID,"%s_BOILERTARGETTEMP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
   
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_BOILERTARGETTEMP";
   doc["qos"]=0;
   doc["state_topic"]=TEMP_BOILER_TARGET_TEMP_STATE_TOPIC;
   doc["value_template"]="{{ value_json.temp }}";
@@ -267,7 +286,7 @@ void MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature(){
   doc["availability"]=dev["availability"];
   
 
-  bool published= sendMqttMsg(DISCOVERY_BOILER_TARGET_TEMP_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_BOILER_TARGET_TEMP_TOPIC,doc);
 
 }
 
@@ -276,7 +295,10 @@ void MQTT_DiscoveryMsg_Sensor_IntegralError(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "Boiler integral error";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_IERR";
+  char ID[64];
+  sprintf(ID,"%s_IERR",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["dev_cla"] = "temperature";
   doc["qos"]=0;
   doc["state_topic"]=INTEGRAL_ERROR_STATE_TOPIC;
@@ -287,20 +309,22 @@ void MQTT_DiscoveryMsg_Sensor_IntegralError(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
   
-  bool published= sendMqttMsg(DISCOVERY_INTEGRAL_ERROR_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_INTEGRAL_ERROR_TOPIC,doc);
 
 }
 
 void MQTT_DiscoveryMsg_Sensor_dwhTemperature(){
 
-  DynamicJsonDocument doc(4096);
+  DynamicJsonDocument doc(2048);
 
   doc["name"] = "DHW temperature";
   doc["dev_cla"] = "temperature";
   doc["unit_of_measurement"] = "°C";
   doc["suggested_display_precision"]=2;
-  
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_DWHTEMP";
+  char ID[64];
+  sprintf(ID,"%s_DWHTEMP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["qos"]=0;
   doc["state_topic"]=ACTUAL_TEMP_DHW_STATE_TOPIC;
   doc["value_template"]="{{ value_json.temp }}";
@@ -309,7 +333,7 @@ void MQTT_DiscoveryMsg_Sensor_dwhTemperature(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
   
-  bool published= sendMqttMsg(DISCOVERY_DWH_TEMP_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_DWH_TEMP_TOPIC,doc);
 
 }
 
@@ -318,7 +342,10 @@ void MQTT_DiscoveryMsg_Number_dwh_temp(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "Domestic Hot Water";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_DWH_TEMP";
+  char ID[64];
+  sprintf(ID,"%s_DWH_TEMP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["icon"]="mdi:cup-water";
   doc["unit_of_measurement"]="°C";
   doc["min"]=20;
@@ -338,14 +365,16 @@ void MQTT_DiscoveryMsg_Number_dwh_temp(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_TEMP_DHW_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_TEMP_DHW_TOPIC,doc);
 }
 void MQTT_DiscoveryMsg_Number_MaxModulationLevel(){
 
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "Max modulation";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_MAXMODLVL";
+  char ID[64];
+  sprintf(ID,"%s_MAXMODLVL",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
   doc["icon"]="mdi:sine-wave";
 
   doc["min"]=1;
@@ -366,7 +395,7 @@ void MQTT_DiscoveryMsg_Number_MaxModulationLevel(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_MAX_MODLVL_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_MAX_MODLVL_TOPIC,doc);
 }
 
 void MQTT_DiscoveryMsg_Number_LowBandTemperature(){
@@ -374,7 +403,10 @@ void MQTT_DiscoveryMsg_Number_LowBandTemperature(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "Low band temperature";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_LBTEMP";
+  char ID[64];
+  sprintf(ID,"%s_LBTEMP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["icon"]="mdi:sine-wave";
 
   doc["min"]=1;
@@ -395,7 +427,7 @@ void MQTT_DiscoveryMsg_Number_LowBandTemperature(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_LBAND_TEMP_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_LBAND_TEMP_TOPIC,doc);
 }
 
 void MQTT_DiscoveryMsg_Number_HighBandTemperature(){
@@ -403,7 +435,10 @@ void MQTT_DiscoveryMsg_Number_HighBandTemperature(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "High band temperature";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_HBTEMP";
+  char ID[64];
+  sprintf(ID,"%s_HBTEMP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+ 
   doc["icon"]="mdi:sine-wave";
 
   doc["min"]=1;
@@ -424,7 +459,7 @@ void MQTT_DiscoveryMsg_Number_HighBandTemperature(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_HBAND_TEMP_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_HBAND_TEMP_TOPIC,doc);
 }
 
 void MQTT_DiscoveryMsg_Number_NospTempOverride(){
@@ -432,8 +467,10 @@ void MQTT_DiscoveryMsg_Number_NospTempOverride(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "No sp temp override";
+  char ID[64];
+  sprintf(ID,"%s_NOSP_TEMP_OVERRIDE",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
 
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"NOSP_TEMP_OVERRIDE";
   doc["icon"]="mdi:sine-wave";
 
   doc["min"]=1;
@@ -454,7 +491,7 @@ void MQTT_DiscoveryMsg_Number_NospTempOverride(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_NOSP_OVERRIDE_TEMP_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_NOSP_OVERRIDE_TEMP_TOPIC,doc);
 }
 
 void MQTT_DiscoveryMsg_Switch_EnableCentralHeating(){
@@ -463,8 +500,9 @@ void MQTT_DiscoveryMsg_Switch_EnableCentralHeating(){
 
   doc["name"] = "Central Heating";
   doc["icon"]="mdi:fire";
-  
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_ENABLE_CHEATING";
+  char ID[64];
+  sprintf(ID,"%s_ENABLE_CHEATING",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
   doc["device_class"]="switch";
   
   doc["payload_off"]="0";
@@ -485,7 +523,7 @@ void MQTT_DiscoveryMsg_Switch_EnableCentralHeating(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_ENABLE_CHEATING_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_ENABLE_CHEATING_TOPIC,doc);
 }
 
 
@@ -494,7 +532,10 @@ void MQTT_DiscoveryMsg_Switch_EnableWaterHeating(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "Domestic Water Heating";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_ENABLE_WHEATING";
+  char ID[64];
+  sprintf(ID,"%s_ENABLE_WHEATING",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["device_class"]="switch";
   doc["icon"]="mdi:fire";
   
@@ -517,7 +558,7 @@ void MQTT_DiscoveryMsg_Switch_EnableWaterHeating(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_ENABLE_WHEATING_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_ENABLE_WHEATING_TOPIC,doc);
 }
 
 void MQTT_DiscoveryMsg_Text_Log(){
@@ -525,7 +566,10 @@ void MQTT_DiscoveryMsg_Text_Log(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "OpenTherm Log";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_OT_LOG";
+  char ID[64];
+  sprintf(ID,"%s_OT_LOG",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["icon"]="mdi:radiology-box-outline";
   
   doc["qos"]=0;
@@ -538,7 +582,7 @@ void MQTT_DiscoveryMsg_Text_Log(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_OT_LOG_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_OT_LOG_TOPIC,doc);
 
 }
 
@@ -547,7 +591,10 @@ void MQTT_DiscoveryMsg_Switch_EnableLog(){
  DynamicJsonDocument doc(2048);
 
   doc["name"] = "Enable OT Log";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_ENABLE_OT_LOG";
+  char ID[64];
+  sprintf(ID,"%s_ENABLE_OT_LOG",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["device_class"]="switch";
   doc["icon"]="mdi:radiology-box-outline";
   
@@ -569,7 +616,7 @@ void MQTT_DiscoveryMsg_Switch_EnableLog(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_ENABLE_OT_LOG_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_ENABLE_OT_LOG_TOPIC,doc);
 
 }
 
@@ -578,7 +625,10 @@ void MQTT_DiscoveryMsg_Text_WIFI_SSID(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "WiFi SSID";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_WIFI_SSID";
+  char ID[64];
+  sprintf(ID,"%s_WIFI_SSID",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["icon"]="mdi:wifi";
   
   doc["qos"]=0;
@@ -591,7 +641,7 @@ void MQTT_DiscoveryMsg_Text_WIFI_SSID(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_WIFI_SSID_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_WIFI_SSID_TOPIC,doc);
 
 }
 
@@ -600,7 +650,10 @@ void MQTT_DiscoveryMsg_Text_WIFI_RSSI(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "WiFi RSSI";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_WIFI_RSSI";
+  char ID[64];
+  sprintf(ID,"%s_WIFI_RSSI",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["icon"]="mdi:wifi-strength-1";
   
   doc["qos"]=0;
@@ -614,7 +667,7 @@ void MQTT_DiscoveryMsg_Text_WIFI_RSSI(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_WIFI_RSSI_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_WIFI_RSSI_TOPIC,doc);
 
 }
 
@@ -623,7 +676,10 @@ void MQTT_DiscoveryMsg_Text_IpAddr(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "IP Addr";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_IP_ADDR";
+  char ID[64];
+  sprintf(ID,"%s_IP_ADDR",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["icon"]="mdi:ip-network";
   
   doc["qos"]=0;
@@ -636,7 +692,7 @@ void MQTT_DiscoveryMsg_Text_IpAddr(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_IP_ADDR_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_IP_ADDR_TOPIC,doc);
 
 }
 
@@ -645,7 +701,10 @@ void MQTT_DiscoveryMsg_Text_MacAddr(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "Mac Addr";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_MAC_ADDR";
+  char ID[64];
+  sprintf(ID,"%s_MAC_ADDR",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["icon"]="mdi:web";
   
   doc["qos"]=0;
@@ -658,7 +717,7 @@ void MQTT_DiscoveryMsg_Text_MacAddr(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_MAC_ADDR_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_MAC_ADDR_TOPIC,doc);
 
 }
 
@@ -667,9 +726,12 @@ void MQTT_DiscoveryMsg_Text_PingAlive(){
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "Ping Alive";
-  doc["uniq_id"]=MQTT_DEV_UNIQUE_ID+"_PING_ALIVE";
+  char ID[64];
+  sprintf(ID,"%s_PING_ALIVE",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
   doc["icon"]="mdi:heart-pulse";
-  doc["unit_of_measurement"]="s";
+  doc["unit_of_measurement"]="min";
 
   doc["qos"]=0;
   doc["retain"]=true;
@@ -681,12 +743,12 @@ void MQTT_DiscoveryMsg_Text_PingAlive(){
   doc["dev"]=dev["dev"];
   doc["availability"]=dev["availability"];
 
-  bool published= sendMqttMsg(DISCOVERY_PING_ALIVE_TOPIC.c_str(),doc);
+  bool published= sendMqttMsg(DISCOVERY_PING_ALIVE_TOPIC,doc);
 
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  ESP_LOGI(LOG_TAG,"MQTT Callback topic:[%s]",topic);
+  ESP_LOGD(LOG_TAG,"MQTT Callback topic:[%s]",topic);
 
   char* p = (char*)malloc((length+1)*sizeof(char));
   memcpy(p,payload,length);
@@ -702,7 +764,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     float t1=getPayloadFloatValue("temp",p);
     if (t1>0) {
       t=t1;
-      ESP_LOGI(LOG_TAG,"CURRENT_TEMP_STATE_TOPIC new temperature:%f",t1);
+      ESP_LOGD(LOG_TAG,"CURRENT_TEMP_STATE_TOPIC new temperature:%f",t1);
       unsigned long now = millis();
       lastPSet=now;
     }else{
@@ -712,10 +774,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
   else if (topicStr == CURRENT_TEMP_SET_TOPIC) {
     float t1=atof(p);
     if (!isnan(t1) && isValidNumber(p)) {
-      pubResult=publishToTopicFloat(t1,CURRENT_TEMP_STATE_TOPIC.c_str(),"temp",true); // Publish the new température;
+      pubResult=publishToTopicFloat(t1,CURRENT_TEMP_STATE_TOPIC,"temp",true); // Publish the new température;
       if (pubResult==true){
         t=t1;
-        ESP_LOGI(LOG_TAG,"CURRENT_TEMP_SET_TOPIC new temperature:%f",t1);
+        ESP_LOGD(LOG_TAG,"CURRENT_TEMP_SET_TOPIC new temperature:%f",t1);
        
         
       }else{
@@ -729,7 +791,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     float sp1=getPayloadFloatValue("temp",p);
     ESP_LOGD(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC payload:[%s] conversion to float:[%f]",p,sp1);
     if (sp1>0) {
-      ESP_LOGI(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC new temperature:%f",sp1);
+      ESP_LOGD(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC new temperature:%f",sp1);
       sp=sp1;
       unsigned long now = millis();
       lastSpSet=now;
@@ -743,9 +805,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     float sp1 = atof(p);
     if (!isnan(sp1) && isValidNumber(p)) {
       
-      pubResult=publishToTopicFloat(sp1,TEMP_SETPOINT_STATE_TOPIC.c_str(),"temp",true); // Publish the new température;
+      pubResult=publishToTopicFloat(sp1,TEMP_SETPOINT_STATE_TOPIC,"temp",true); // Publish the new température;
       if (pubResult==true){
-        ESP_LOGI(LOG_TAG,"TEMP_SETPOINT_SET_TOPIC temperature:[%f]",sp1);
+        ESP_LOGD(LOG_TAG,"TEMP_SETPOINT_SET_TOPIC temperature:[%f]",sp1);
         sp=sp1;
       }else{
         ESP_LOGE(LOG_TAG,"TEMP_SETPOINT_SET_TOPIC publish error");
@@ -758,13 +820,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
     
     char * mode=getPayloadCharValue("mode",p);
     if (mode!=NULL){
-      ESP_LOGI(LOG_TAG,"MODE_STATE_TOPIC getPayloadCharValue:[%s]",mode);
+      ESP_LOGD(LOG_TAG,"MODE_STATE_TOPIC getPayloadCharValue:[%s]",mode);
       if (!strcmp(mode,"heat")){
         bHeatingMode=true;
-        ESP_LOGI(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] bCentralHeatingEnable:true",p);
+        ESP_LOGD(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] bCentralHeatingEnable:true",p);
       }else if (!strcmp(mode,"off")){
         bHeatingMode=false;
-        ESP_LOGI(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] bCentralHeatingEnable:false",p);
+        ESP_LOGD(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] bCentralHeatingEnable:false",p);
       }else{
         ESP_LOGE(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] unknown",p);
       }
@@ -775,20 +837,20 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }else if (topicStr == MODE_SET_TOPIC) {
     if (!strcmp(p,"heat") && bCentralHeatingEnable==true){
       
-      pubResult=publishToTopicStr(p,MODE_STATE_TOPIC.c_str(),"mode",true); // Publish the new température;
+      pubResult=publishToTopicStr(p,MODE_STATE_TOPIC,"mode",true); // Publish the new température;
       if (pubResult==true){
         bHeatingMode=true;
-        ESP_LOGI(LOG_TAG,"MODE_SET_TOPIC mode:[%s] bCentralHeatingEnable:true",p);
+        ESP_LOGD(LOG_TAG,"MODE_SET_TOPIC mode:[%s] bCentralHeatingEnable:true",p);
       }else{
         ESP_LOGE(LOG_TAG,"MODE_SET_TOPIC publish error");
       }
     }else if (!strcmp(p,"off")){
-      pubResult=publishToTopicStr(p,MODE_STATE_TOPIC.c_str(),"mode",true); // Publish the new température;
+      pubResult=publishToTopicStr(p,MODE_STATE_TOPIC,"mode",true); // Publish the new température;
       if (pubResult==true){
         bHeatingMode=false;
-        ESP_LOGI(LOG_TAG,"MODE_SET_TOPIC mode:[%s] bCentralHeatingEnable:false",p);
+        ESP_LOGD(LOG_TAG,"MODE_SET_TOPIC mode:[%s] bCentralHeatingEnable:false",p);
       }else{
-        ESP_LOGE(LOG_TAG,"MODE_SET_TOPIC publish error");
+        ESP_LOGD(LOG_TAG,"MODE_SET_TOPIC publish error");
       }
     }else
       ESP_LOGE(LOG_TAG,"MODE_SET_TOPIC mode:[%s] unknown",p);
@@ -800,7 +862,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (dwhTarget1>0) {
       dwhTarget = dwhTarget1;
       bParamChanged=true;
-      ESP_LOGI(LOG_TAG,"TEMP_DHW_STATE_TOPIC temperature:[%f]",dwhTarget1);
+      ESP_LOGD(LOG_TAG,"TEMP_DHW_STATE_TOPIC temperature:[%f]",dwhTarget1);
     }else{
       ESP_LOGE(LOG_TAG,"TEMP_DHW_STATE_TOPIC value <= 0 error");
     }
@@ -808,10 +870,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
   else if (topicStr == TEMP_DHW_SET_TOPIC) {
     float dwhTarget1 = atof(p);
     if (!isnan(dwhTarget1) && isValidNumber(p)) {
-      pubResult=publishToTopicFloat(dwhTarget1,TEMP_DHW_STATE_TOPIC.c_str(),"temp");
+      pubResult=publishToTopicFloat(dwhTarget1,TEMP_DHW_STATE_TOPIC,"temp");
       if (pubResult==true){
         dwhTarget = dwhTarget1;
-        ESP_LOGI(LOG_TAG,"TEMP_DHW_SET_TOPIC temperature:[%f]",dwhTarget1);
+        ESP_LOGD(LOG_TAG,"TEMP_DHW_SET_TOPIC temperature:[%f]",dwhTarget1);
       }else{
         ESP_LOGE(LOG_TAG,"TEMP_DHW_SET_TOPIC publish error");
       }
@@ -836,7 +898,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   else if (topicStr == ENABLE_CHEATING_SET_TOPIC) {
     if (!strcmp(p, "1")){
-      pubResult=client.publish(ENABLE_CHEATING_STATE_TOPIC.c_str(), p, length,true);
+      pubResult=client.publish(ENABLE_CHEATING_STATE_TOPIC, p, length,true);
       if (pubResult==true){
         bCentralHeatingEnable=true;
         bParamChanged=true;
@@ -845,7 +907,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
         ESP_LOGE(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC publish error");
       }
     }else if (!strcmp(p, "0")){
-       pubResult=client.publish(ENABLE_CHEATING_STATE_TOPIC.c_str(), p, length,true);
+       pubResult=client.publish(ENABLE_CHEATING_STATE_TOPIC, p, length,true);
       if (pubResult==true){
         bCentralHeatingEnable=false;
         bParamChanged=true;
@@ -874,7 +936,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   else if (topicStr == ENABLE_WHEATING_SET_TOPIC) {
     if (!strcmp(p, "1")){
-      pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC.c_str(), p, length,true);
+      pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC, p, length,true);
       if (pubResult==true){
         bWaterHeatingEnable=true;
         ESP_LOGI(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC bWaterHeatingEnable:[true]");
@@ -882,7 +944,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
         ESP_LOGE(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC publish error");
       }
     }else if (!strcmp(p, "0")){
-      pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC.c_str(), p, length,true);
+      pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC, p, length,true);
       if (pubResult==true){
         bWaterHeatingEnable=false;
         ESP_LOGI(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC bWaterHeatingEnable:[false]");
@@ -909,7 +971,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   else if (topicStr == MAX_MODULATION_LEVEL_SET_TOPIC) {
     int MaxModLevel1 = atoi(p);
     if (!isnan(MaxModLevel1) && isValidNumber(p)) {
-      pubResult=publishToTopicFloat(MaxModLevel1,MAX_MODULATION_LEVEL_STATE_TOPIC.c_str(),"level",true);
+      pubResult=publishToTopicFloat(MaxModLevel1,MAX_MODULATION_LEVEL_STATE_TOPIC,"level",true);
       if (pubResult==true){
         MaxModLevel = MaxModLevel1;
         ESP_LOGI(LOG_TAG,"MAX_MODULATION_LEVEL_SET_TOPIC MaxModLevel:[%d]",MaxModLevel);
@@ -933,7 +995,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   else if (topicStr == LBAND_TEMP_SET_TOPIC) {
     int oplo1 = atoi(p);
     if (!isnan(oplo1) && isValidNumber(p) && oplo1<ophi) {
-      pubResult=publishToTopicFloat(oplo1,LBAND_TEMP_STATE_TOPIC.c_str(),"temp",true);
+      pubResult=publishToTopicFloat(oplo1,LBAND_TEMP_STATE_TOPIC,"temp",true);
       if (pubResult==true ){
         ESP_LOGI(LOG_TAG,"LBAND_TEMP_SET_TOPIC low band:[%d]",oplo1);
         oplo = oplo1;
@@ -959,7 +1021,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   else if (topicStr == HBAND_TEMP_SET_TOPIC) {
     float ophi1 = atof(p);
     if (!isnan(ophi1) && isValidNumber(p) && ophi1>oplo) {
-      pubResult=publishToTopicFloat(ophi1,HBAND_TEMP_STATE_TOPIC.c_str(),"temp",true);
+      pubResult=publishToTopicFloat(ophi1,HBAND_TEMP_STATE_TOPIC,"temp",true);
       if (pubResult==true){
         ophi = ophi1;
         ESP_LOGI(LOG_TAG,"HBAND_TEMP_SET_TOPIC high band:[%d]",ophi);
@@ -982,7 +1044,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   else if (topicStr == NOSP_OVERRIDE_TEMP_SET_TOPIC) {
     float nosp_override1 =atof(p);
     if (!isnan(nosp_override1) && isValidNumber(p)) {
-      publishToTopicFloat(nosp_override1,NOSP_OVERRIDE_TEMP_STATE_TOPIC.c_str(),"temp");
+      publishToTopicFloat(nosp_override1,NOSP_OVERRIDE_TEMP_STATE_TOPIC,"temp");
       nosp_override = nosp_override1;
       ESP_LOGI(LOG_TAG,"NOSP_OVERRIDE_TEMP_SET_TOPIC no sp temp overrice:[%f]",nosp_override);
     }else{
@@ -1016,8 +1078,9 @@ char * getPayloadCharValue(const char * key, char * payload){
   DeserializationError err =deserializeJson(doc, payload);
    
   if (err) {
-      ESP_LOGI(LOG_TAG,"deserializeJson() failed: %s",err.c_str());
+    ESP_LOGI(LOG_TAG,"deserializeJson() failed: %s",err.c_str());
   }
+
   ESP_LOGI(LOG_TAG,"key:[%s]",key);
   if (doc.containsKey(key)){
     const char * tt=doc[key];
@@ -1033,26 +1096,33 @@ char * getPayloadCharValue(const char * key, char * payload){
 }
 
 bool publishToTopicFloat(float value,const char *topic,const char * key,bool retain){
-  DynamicJsonDocument doc(512);
-  String jsonBuffer;
-  doc[key]=(float)value;
+  //DynamicJsonDocument doc(512);
+  //String jsonBuffer;
+  //doc[key]=(float)value;
   
-  size_t n = serializeJson(doc, jsonBuffer);
+  //size_t n = serializeJson(doc, jsonBuffer);
   
-  byte* p = (byte*)malloc(n+1);
-  memcpy(p,jsonBuffer.c_str(),n);
+  //byte* p = (byte*)malloc(n+1);
+  //memcpy(p,jsonBuffer.c_str(),n);
+  char * jsonBuffer=(char*)malloc(256*sizeof(char));
+  sprintf(jsonBuffer,"{\"%s\":%f}",key,value);
+  size_t n=strlen(jsonBuffer);
 
-  bool published=client.publish(topic,p,n,true);
-  free(p);
+  bool published=client.publish(topic,jsonBuffer,n,true);
+  free(jsonBuffer);
   return published;
 }
 
 bool publishToTopicStr(char * value,const char *topic,const char * key,bool retain){
-  DynamicJsonDocument doc(512);
-  String jsonBuffer;
-  doc[key]=(char *)value;
-  size_t n = serializeJson(doc, jsonBuffer);  
-  bool published=client.publish(topic, jsonBuffer.c_str(), n,retain);
+  DynamicJsonDocument doc(128);
+  char * jsonBuffer=(char*)malloc(256*sizeof(char));
+  //doc[key]=(char *)value;
+  //size_t n = serializeJson(doc, jsonBuffer); 
+  sprintf(jsonBuffer,"{\"%s\":\"%s\"}",key,value);
+  size_t n=strlen(jsonBuffer);
+
+  bool published=client.publish(topic, jsonBuffer, n,retain);
+  free(jsonBuffer);
   return published;
 }
 
@@ -1065,7 +1135,7 @@ String jsonBuffer;
 doc["temp"]=19;
 
 size_t n = serializeJson(doc, jsonBuffer);
-bool published=client.publish(CURRENT_TEMP_STATE_TOPIC.c_str(), jsonBuffer.c_str(), n);
+bool published=client.publish(CURRENT_TEMP_STATE_TOPIC, jsonBuffer.c_str(), n);
  
 }
 
@@ -1076,7 +1146,7 @@ String jsonBuffer;
 
 doc["status"]="ONLINE";
 size_t n = serializeJson(doc, jsonBuffer);
-bool published=client.publish(AVAILABILITY_TOPIC.c_str(),jsonBuffer.c_str() , n,true);
+bool published=client.publish(AVAILABILITY_TOPIC,jsonBuffer.c_str() , n,true);
  
 }
 
@@ -1089,7 +1159,7 @@ String jsonBuffer;
 doc["temp"]=tp;
 
 size_t n = serializeJson(doc, jsonBuffer);
-bool published=client.publish(TEMP_SETPOINT_STATE_TOPIC.c_str(), jsonBuffer.c_str(), n);
+bool published=client.publish(TEMP_SETPOINT_STATE_TOPIC, jsonBuffer.c_str(), n);
  
 }
 
