@@ -11,9 +11,11 @@
 void connectWIFI();
 void connectMQTT();
 void IRAM_ATTR handleInterrupt();
+void getBootReasonMessage(char *buffer, int bufferlength);
 void web_otcmd(AsyncWebServerRequest * request);
 void updateData();
 void updateDataDiag();
+
 void processResponse(unsigned long response, OpenThermResponseStatus status) ;
 unsigned int buildRequest(byte req_idx);
 void handleOpenTherm();

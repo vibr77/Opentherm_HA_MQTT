@@ -16,7 +16,7 @@ void MQTT_DiscoveryMsg_Sensor_IntegralError();
 void MQTT_DiscoveryMsg_Sensor_dwhTemperature();
 void MQTT_DiscoveryMsg_Sensor_WaterHeating();
 void MQTT_DiscoveryMsg_Sensor_CentralHeating();
-
+void MQTT_DiscoveryMsg_Sensor_LeadingDevice();
 void MQTT_DiscoveryMsg_Number_MaxModulationLevel();
 void MQTT_DiscoveryMsg_Number_LowBandTemperature();
 void MQTT_DiscoveryMsg_Number_HighBandTemperature();
@@ -50,9 +50,4 @@ bool publishToTopicFloat(float value,const char *topic,const char * key,bool ret
 bool publishToTopicStr(char * value,const char *topic,const char * key,bool retain=false);
 void publishAvailable();
 
-
-void publishInitValue2();
-
-void publishInitValue4();
-void publishInitValue5(float tp);
-void publishInitValue6();
+void publishInitializationValues();

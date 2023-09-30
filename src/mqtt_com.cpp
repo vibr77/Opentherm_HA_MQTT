@@ -290,6 +290,31 @@ void MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature(){
 
 }
 
+void MQTT_DiscoveryMsg_Sensor_LeadingDevice(){
+  
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "Leading device";
+  char ID[64];
+  sprintf(ID,"%s_LEADING_DEVICE",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
+  doc["icon"]="mdi:star-shooting-outline";
+  
+  doc["qos"]=0;
+  doc["retain"]=true;
+ 
+  doc["state_topic"]=LEADING_DEVICE_STATE_TOPIC;
+  doc["value_template"]="{{ value_json.value }}";
+  
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_LEADING_DEVICE_TOPIC,doc);
+
+}
+
 void MQTT_DiscoveryMsg_Sensor_IntegralError(){
 
   DynamicJsonDocument doc(2048);
@@ -483,7 +508,7 @@ void MQTT_DiscoveryMsg_Number_NospTempOverride(){
   doc["entity_category"]="config";
   doc["optimistic"]=OPTIMISTIC;
   doc["state_topic"]=NOSP_OVERRIDE_TEMP_STATE_TOPIC;
-  doc["value_template"]="{{ value_json.level }}";
+  doc["value_template"]="{{ value_json.temp }}";
   
   doc["command_topic"]=NOSP_OVERRIDE_TEMP_SET_TOPIC;
   
@@ -1070,6 +1095,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }else{
       ESP_LOGE(LOG_TAG,"NOSP_OVERRIDE_TEMP_SET_TOPIC value convert error");
     }
+  }else if (!strcmp(topic,INIT_DEFAULT_VALUES_TOPIC)){
+    publishInitializationValues();
   }
   free(p);
 }
@@ -1116,70 +1143,88 @@ char * getPayloadCharValue(const char * key, char * payload){
 }
 
 bool publishToTopicFloat(float value,const char *topic,const char * key,bool retain){
-  //DynamicJsonDocument doc(512);
-  //String jsonBuffer;
-  //doc[key]=(float)value;
-  
-  //size_t n = serializeJson(doc, jsonBuffer);
-  
-  //byte* p = (byte*)malloc(n+1);
-  //memcpy(p,jsonBuffer.c_str(),n);
-  char * jsonBuffer=(char*)malloc(256*sizeof(char));
-  sprintf(jsonBuffer,"{\"%s\":%f}",key,value);
-  size_t n=strlen(jsonBuffer);
+ 
+  char mqttPayload[256];
+  sprintf(mqttPayload,"{\"%s\":%f}",key,value);
+  size_t n=strlen(mqttPayload);
 
-  bool published=client.publish(topic,jsonBuffer,n,true);
-  free(jsonBuffer);
+  bool published=client.publish(topic,mqttPayload,n,true);
+ 
   return published;
 }
 
 bool publishToTopicStr(char * value,const char *topic,const char * key,bool retain){
-  DynamicJsonDocument doc(128);
-  char * jsonBuffer=(char*)malloc(256*sizeof(char));
-  //doc[key]=(char *)value;
-  //size_t n = serializeJson(doc, jsonBuffer); 
-  sprintf(jsonBuffer,"{\"%s\":\"%s\"}",key,value);
-  size_t n=strlen(jsonBuffer);
+  
+  char mqttPayload[256];
 
-  bool published=client.publish(topic, jsonBuffer, n,retain);
-  free(jsonBuffer);
+  sprintf(mqttPayload,"{\"%s\":\"%s\"}",key,value);
+  size_t n=strlen(mqttPayload);
+
+  bool published=client.publish(topic, mqttPayload, n,retain);
+ 
   return published;
 }
 
+void publishInitializationValues(){
+  // 
+  char mqttPayload[256];
+  bool published;
+  size_t n=0;
 
-void publishInitValue2(){
+  sprintf(mqttPayload,"{\"temp\",%f}",INITIAL_TEMP);
+  n=strlen(mqttPayload);
+  published=client.publish(CURRENT_TEMP_STATE_TOPIC, mqttPayload, n);
 
-DynamicJsonDocument doc(512);
-String jsonBuffer;
+  sprintf(mqttPayload,"{\"temp\",%f}",INITIAL_SP);
+  n=strlen(mqttPayload);
+  published=client.publish(TEMP_SETPOINT_STATE_TOPIC, mqttPayload, n);
 
-doc["temp"]=19;
+  sprintf(mqttPayload,"{\"temp\",%f}",LOW_BAND_TEMP);
+  n=strlen(mqttPayload);
+  published=client.publish(LBAND_TEMP_STATE_TOPIC, mqttPayload, n);
 
-size_t n = serializeJson(doc, jsonBuffer);
-bool published=client.publish(CURRENT_TEMP_STATE_TOPIC, jsonBuffer.c_str(), n);
- 
+  sprintf(mqttPayload,"{\"temp\",%f}",HIGH_BAND_TEMP);
+  n=strlen(mqttPayload);
+  published=client.publish(HBAND_TEMP_STATE_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"{\"level\",%f}",MAX_MODULATION_LEVEL);
+  n=strlen(mqttPayload);
+  published=client.publish(MAX_MODULATION_LEVEL_STATE_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"{\"temp\",%f}",INITIAL_TARGET_DWH_TEMP);
+  n=strlen(mqttPayload);
+  published=client.publish(TEMP_DHW_STATE_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"{\"temp\",%f}",INITIAL_NO_SP_TEMP_OVERRIDE);
+  n=strlen(mqttPayload);
+  published=client.publish(NOSP_OVERRIDE_TEMP_STATE_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"\"0\"");
+  n=strlen(mqttPayload);
+  published=client.publish(ENABLE_CHEATING_SET_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"\"0\"");
+  n=strlen(mqttPayload);
+  published=client.publish(ENABLE_WHEATING_SET_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"\"0\"");
+  n=strlen(mqttPayload);
+  published=client.publish(ENABLE_OT_LOG_SET_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"Init Default control values");
+  publishToTopicStr(mqttPayload,OT_LOG_STATE_TOPIC,"text",false); 
+
 }
 
 void publishAvailable(){
 
-DynamicJsonDocument doc(1024);
-String jsonBuffer;
+  char mqttPayload[256];
+  bool published;
+  size_t n=0;
 
-doc["status"]="ONLINE";
-size_t n = serializeJson(doc, jsonBuffer);
-bool published=client.publish(AVAILABILITY_TOPIC,jsonBuffer.c_str() , n,true);
+  sprintf(mqttPayload,"{\"status\",\"ONLINE\"}");
+  published=client.publish(AVAILABILITY_TOPIC,mqttPayload , n,true);
  
 }
 
-
-void publishInitValue5(float tp){
-
-DynamicJsonDocument doc(4096);
-String jsonBuffer;
-
-doc["temp"]=tp;
-
-size_t n = serializeJson(doc, jsonBuffer);
-bool published=client.publish(TEMP_SETPOINT_STATE_TOPIC, jsonBuffer.c_str(), n);
- 
-}
 

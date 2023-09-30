@@ -45,6 +45,10 @@ static const char * TEMPERATURE_UNIT= "C";
 static const float MIN_SP_TEMP=5.0;
 static const float MAX_SP_TEMP=30.0;
 static const float INITIAL_TEMP=19.0;
+static const float INITIAL_SP=19.0;
+static const float INITIAL_TARGET_DWH_TEMP=50.0;
+static const float INITIAL_NO_SP_TEMP_OVERRIDE=25.0;
+
 static const float PRECISION=0.5;
 static const float TEMPERATURE_STEP=0.5;
 static  const boolean OPTIMISTIC=false;
@@ -83,6 +87,8 @@ static const char * DISCOVERY_IP_ADDR_TOPIC="homeassistant/sensor/opentherm-ther
 static const char * DISCOVERY_MAC_ADDR_TOPIC=  "homeassistant/sensor/opentherm-thermostat/mac_addr/config";
 static const char * DISCOVERY_PING_ALIVE_TOPIC="homeassistant/sensor/opentherm-thermostat/ping_alive/config";
 
+static const char * DISCOVERY_LEADING_DEVICE_TOPIC="homeassistant/sensor/opentherm-thermostat/leading_device/config";
+
 static const char * DISCOVERY_INIT_DEFAULT_VALUES_TOPIC="homeassistant/button/opentherm-thermostat/init_default_values/config";
 
 static const char * DISCOVERY_OT_LOG_TOPIC = "homeassistant/sensor/opentherm-thermostat/ot_log/config";
@@ -92,6 +98,7 @@ static const char * AVAILABILITY_TOPIC = "homeassistant/opentherm-thermostat/sta
 static const char *CURRENT_TEMP_STATE_TOPIC = "homeassistant/opentherm-thermostat/current-temperature/state";
 static const char * CURRENT_TEMP_SET_TOPIC = "homeassistant/opentherm-thermostat/current-temperature/set";
 
+static const char * LEADING_DEVICE_STATE_TOPIC= "homeassistant/opentherm-thermostat/leading_device/state";
 // current temperature topics
 static const char * TEMP_SETPOINT_STATE_TOPIC = "homeassistant/opentherm-thermostat/setpoint-temperature/state";
 static const char * TEMP_SETPOINT_SET_TOPIC = "homeassistant/opentherm-thermostat/setpoint-temperature/set";
