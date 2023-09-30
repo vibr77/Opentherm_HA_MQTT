@@ -214,6 +214,130 @@ void connectMQTT(){
   return;
 }
 
+void getBootReasonMessage(char *buffer, int bufferlength){
+#if defined(ARDUINO_ARCH_ESP32)
+
+    esp_reset_reason_t reset_reason = esp_reset_reason();
+
+    switch (reset_reason){
+    case ESP_RST_UNKNOWN:
+      snprintf(buffer, bufferlength, "Reset reason can not be determined");
+      break;
+    case ESP_RST_POWERON:
+      snprintf(buffer, bufferlength, "Reset due to power-on event");
+      break;
+    case ESP_RST_EXT:
+      snprintf(buffer, bufferlength, "Reset by external pin (not applicable for ESP32)");
+      break;
+    case ESP_RST_SW:
+      snprintf(buffer, bufferlength, "Software reset via esp_restart");
+      break;
+    case ESP_RST_PANIC:
+      snprintf(buffer, bufferlength, "Software reset due to exception/panic");
+      break;
+    case ESP_RST_INT_WDT:
+      snprintf(buffer, bufferlength, "Reset (software or hardware) due to interrupt watchdog");
+      break;
+    case ESP_RST_TASK_WDT:
+      snprintf(buffer, bufferlength, "Reset due to task watchdog");
+      break;
+    case ESP_RST_WDT:
+      snprintf(buffer, bufferlength, "Reset due to other watchdogs");
+      break;
+    case ESP_RST_DEEPSLEEP:
+      snprintf(buffer, bufferlength, "Reset after exiting deep sleep mode");
+      break;
+    case ESP_RST_BROWNOUT:
+      snprintf(buffer, bufferlength, "Brownout reset (software or hardware)");
+      break;
+    case ESP_RST_SDIO:
+      snprintf(buffer, bufferlength, "Reset over SDIO");
+      break;
+    }
+
+    if (reset_reason == ESP_RST_DEEPSLEEP){
+      esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+
+      switch (wakeup_reason){
+      case ESP_SLEEP_WAKEUP_UNDEFINED:
+        snprintf(buffer, bufferlength, "In case of deep sleep: reset was not caused by exit from deep sleep");
+        break;
+      case ESP_SLEEP_WAKEUP_ALL:
+        snprintf(buffer, bufferlength, "Not a wakeup cause: used to disable all wakeup sources with esp_sleep_disable_wakeup_source");
+        break;
+      case ESP_SLEEP_WAKEUP_EXT0:
+        snprintf(buffer, bufferlength, "Wakeup caused by external signal using RTC_IO");
+        break;
+      case ESP_SLEEP_WAKEUP_EXT1:
+        snprintf(buffer, bufferlength, "Wakeup caused by external signal using RTC_CNTL");
+        break;
+      case ESP_SLEEP_WAKEUP_TIMER:
+        snprintf(buffer, bufferlength, "Wakeup caused by timer");
+        break;
+      case ESP_SLEEP_WAKEUP_TOUCHPAD:
+        snprintf(buffer, bufferlength, "Wakeup caused by touchpad");
+        break;
+      case ESP_SLEEP_WAKEUP_ULP:
+        snprintf(buffer, bufferlength, "Wakeup caused by ULP program");
+        break;
+      case ESP_SLEEP_WAKEUP_GPIO:
+        snprintf(buffer, bufferlength, "Wakeup caused by GPIO (light sleep only)");
+        break;
+      case ESP_SLEEP_WAKEUP_UART:
+        snprintf(buffer, bufferlength, "Wakeup caused by UART (light sleep only)");
+        break;
+      }
+    }
+    else{
+      snprintf(buffer, bufferlength, "Unknown reset reason %d", reset_reason);
+    }
+#endif
+
+#if defined(ARDUINO_ARCH_ESP8266)
+
+    rst_info *resetInfo;
+
+    resetInfo = ESP.getResetInfoPtr();
+
+    switch (resetInfo->reason)
+    {
+
+    case REASON_DEFAULT_RST:
+        snprintf(buffer, bufferlength, "Normal startup by power on");
+        break;
+
+    case REASON_WDT_RST:
+        snprintf(buffer, bufferlength, "Hardware watch dog reset");
+        break;
+
+    case REASON_EXCEPTION_RST:
+        snprintf(buffer, bufferlength, "Exception reset, GPIO status won't change");
+        break;
+
+    case REASON_SOFT_WDT_RST:
+        snprintf(buffer, bufferlength, "Software watch dog reset, GPIO status won't change");
+        break;
+
+    case REASON_SOFT_RESTART:
+        snprintf(buffer, bufferlength, "Software restart ,system_restart , GPIO status won't change");
+        break;
+
+    case REASON_DEEP_SLEEP_AWAKE:
+        snprintf(buffer, bufferlength, "Wake up from deep-sleep");
+        break;
+
+    case REASON_EXT_SYS_RST:
+        snprintf(buffer, bufferlength, "External system reset");
+        break;
+
+    default:
+        snprintf(buffer, bufferlength, "Unknown reset cause %d", resetInfo->reason);
+        break;
+    };
+
+#endif
+}
+
 void web_otcmd(AsyncWebServerRequest * request){
 
   int paramsNr = request->params();
@@ -286,6 +410,8 @@ void setup(){
   MQTT_DiscoveryMsg_Number_NospTempOverride();
   MQTT_DiscoveryMsg_Number_dwh_temp();
   
+  MQTT_DiscoveryMsg_Sensor_LeadingDevice();
+
   MQTT_DiscoveryMsg_Sensor_CentralHeating();
   MQTT_DiscoveryMsg_Sensor_WaterHeating();
   MQTT_DiscoveryMsg_Switch_EnableCentralHeating();
@@ -304,6 +430,12 @@ void setup(){
   //publishInitValue2();
   //publishInitValue5(19);
 
+  #define BOOT_REASON_MESSAGE_SIZE 150
+  char bootReasonMessage [BOOT_REASON_MESSAGE_SIZE];
+  getBootReasonMessage(bootReasonMessage, BOOT_REASON_MESSAGE_SIZE);
+  publishToTopicStr(bootReasonMessage,OT_LOG_STATE_TOPIC,"text",false); 
+
+
   unsigned long now = millis();
   startTime=now/1000;
 
@@ -319,11 +451,13 @@ void setup(){
   esp_task_wdt_init(WDT_TIMEOUT, true);             // enable panic so ESP32 restarts
   esp_task_wdt_add(NULL);                           // add current thread to WDT watch
 
-  esp_reset_reason_t BootReason = esp_reset_reason();
-  if ( BootReason == ESP_RST_TASK_WDT  ) {                 // Reset due to task watchdog.
-      Serial.println("Reboot was because of WDT!!"); // TODO IMPLEMENTATION OF MQTT PUBLISH
-  }
+  //esp_reset_reason_t BootReason = esp_reset_reason();
+  //if ( BootReason == ESP_RST_TASK_WDT  ) {                 // Reset due to task watchdog.
+  //    Serial.println("Reboot was because of WDT!!"); // TODO IMPLEMENTATION OF MQTT PUBLISH
+  //}
 }
+
+
 
 void updateDataDiag(){
   // send MQTT Update
