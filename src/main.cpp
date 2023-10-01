@@ -8,7 +8,18 @@ ______________________
 
 Release changelog:
   +20230919: Initial Commit
-*/ 
+ 
+
+Todo:
+
++ Add identify button with Led on PCB
++ Connect reboot reason
++ Check on MQTT disconnection MQTT Server Log
++ MQTT disconnect -> watchdog reboot to be fixed
++ Link OT Log 
++ Test the default config button
++ Write the doc
+*/
 
 #include <esp_task_wdt.h>
 #define WDT_TIMEOUT   30
