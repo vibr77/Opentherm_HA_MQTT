@@ -34,6 +34,7 @@ uint8_t boiler_status = 0;
 bool bCentralHeatingEnable=false;
 bool bWaterHeatingEnable=false;
 bool bHeatingMode=false;
+bool bOtLogEnable=false;
 
 bool bCentralHeating=false;
 bool bWaterHeating=false;

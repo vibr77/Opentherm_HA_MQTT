@@ -1,24 +1,27 @@
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.42
+ \ \ / /_ _| _ ) _ \      Release: 0.43
   \ V / | || _ \   /      Date: 20230919
    \_/ |___|___/_|_\      Description: ESP32 Mini Home Assistant Opentherm Master Thermostat
                 2023      Licence: Creative Commons
 ______________________
 
 Release changelog:
+------------------
   +20230919: Initial Commit
+  +20231001: First tested & stable version
  
 
 Todo:
-
+-----------------------
 + Add identify button with Led on PCB
 + Connect reboot reason
 + Check on MQTT disconnection MQTT Server Log
 + MQTT disconnect -> watchdog reboot to be fixed
-+ Link OT Log 
++ Link OT Log [OK] 
 + Test the default config button
 + Write the doc
+
 */
 
 #include <esp_task_wdt.h>
@@ -515,11 +518,24 @@ void updateData(){
 
 void processResponse(unsigned long response, OpenThermResponseStatus status) {
   
+  char msg[64];
+
   if (!ot.isValidResponse(response)) {
     ESP_LOGE("MAIN","OT Invalid reponse:0x%lx status:%d",response,status);
+    
+    if (bOtLogEnable==true){
+      snprintf(msg,64,"Inv Resp:0x%lx,status:%d",response,status);
+      publishToTopicStr(msg,OT_LOG_STATE_TOPIC,"text",false); 
+    }
+
     return;
   }
- 
+  
+  if (bOtLogEnable==true){
+    snprintf(msg,64,"Resp:0x%lx,status:%d",response,status);
+    publishToTopicStr(msg,OT_LOG_STATE_TOPIC,"text",false); 
+  }
+
   float retT;
 
   byte id = (response >> 16 & 0xFF);
@@ -619,6 +635,11 @@ void handleOpenTherm() {
       unsigned int request = buildRequest(req_idx);  // Rotating the Request
       ot.sendRequestAync(request);
       ESP_LOGI("MAIN","Thermostat Request:[0x%lx]",request);
+      if (bOtLogEnable==true){
+        char msg[32];
+        snprintf(msg,32,"Req:0x%lx",request);
+        publishToTopicStr(msg,OT_LOG_STATE_TOPIC,"text",false); 
+      }
       req_idx++;
     
       if (req_idx >= requests_count) {

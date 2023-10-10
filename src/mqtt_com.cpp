@@ -10,7 +10,7 @@
 extern PubSubClient client;
 
 extern float oplo,ophi,sp,t,ierr,op;
-extern bool bCentralHeating, bWaterHeatingEnable,bCentralHeatingEnable,bHeatingMode;
+extern bool bCentralHeating, bWaterHeatingEnable,bCentralHeatingEnable,bHeatingMode,bOtLogEnable;
 extern bool bWaterHeating;
 extern float dwhTarget;
 extern float dwhTemp;
@@ -926,7 +926,45 @@ void callback(char* topic, byte* payload, unsigned int length) {
       ESP_LOGE(LOG_TAG,"TEMP_DHW_SET_TOPIC value convert error");
     }
   }
-
+    // OT_LOG
+  else if (!strcmp(topic, ENABLE_OT_LOG_STATE_TOPIC)) {
+    if (!strcmp(p, "1")){
+      bOtLogEnable=true;
+      bParamChanged=true;
+      ESP_LOGI(LOG_TAG,"ENABLE_OT_LOG_STATE_TOPIC bOtLogEnable:[true]");
+    }else if (!strcmp(p, "0")){
+      bOtLogEnable=false;
+      bParamChanged=true;
+      ESP_LOGI(LOG_TAG,"ENABLE_OT_LOG_STATE_TOPIC bOtLogEnable:[false]");
+    }else{
+      ESP_LOGE(LOG_TAG,"ENABLE_OT_LOG_STATE_TOPIC unknow param value error");
+    }
+  }
+// OTLOG
+  else if (!strcmp(topic, ENABLE_OT_LOG_SET_TOPIC)) {
+    if (!strcmp(p, "1")){
+      pubResult=client.publish(ENABLE_OT_LOG_STATE_TOPIC, p, length,true);
+      if (pubResult==true){
+        bOtLogEnable=true;//
+        bParamChanged=true;
+        ESP_LOGI(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC bOtLogEnable:[true]");
+      }else{
+        ESP_LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC publish error");
+      }
+    }else if (!strcmp(p, "0")){
+       pubResult=client.publish(ENABLE_OT_LOG_STATE_TOPIC, p, length,true);
+      if (pubResult==true){
+        bOtLogEnable=false;
+        bParamChanged=true;
+        ESP_LOGI(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC bOtLogEnable:[false]");
+      }else{
+        ESP_LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC publish error");
+      }
+    }else{
+      ESP_LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC unknow param value error");
+    }
+  }
+  
   // ENABLE CHEATING 
   else if (!strcmp(topic, ENABLE_CHEATING_STATE_TOPIC)) {
     if (!strcmp(p, "1")){
