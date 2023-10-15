@@ -27,14 +27,18 @@ static const char * SW_VERSION="0.40";
 
 static const int   MQTT_PORT = 1883;
 
-static const char * MQTT_DEVICENAME="opentherm-Boiler";
-static const char * MQTT_DEV_UNIQUE_ID="OT_B_01";
+static const char * MQTT_DEVICENAME="opentherm-Boilerprod";
+static const char * MQTT_DEV_UNIQUE_ID="OT_B_02";
 
 static const int HTTP_PORT = 80;
 
 // Master OpenTherm Shield pins configuration
-static const int OT_IN_PIN = 21;  //for Arduino, 4 for ESP8266 (D2), 21 for ESP32
-static const int OT_OUT_PIN = 22; //for Arduino, 5 for ESP8266 (D1), 22 for ESP32
+static const int OT_IN_PIN = 19;  //for Arduino, 4 for ESP8266 (D2), 21 for ESP32
+static const int OT_OUT_PIN = 18; //for Arduino, 5 for ESP8266 (D1), 22 for ESP32
+
+static const int GREEN_LED_PIN = 26;  
+static const int BLUE_LED_PIN = 27; 
+static const int RED_LED_PIN= 25;
 
 // Temperature sensor pin
 static const int ROOM_TEMP_SENSOR_PIN = 14; //for Arduino, 14 for ESP8266 (D5), 18 for ESP32

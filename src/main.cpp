@@ -51,6 +51,9 @@ Todo:
 #include "include/pwd.h"
 #include "include/mqtt_com.h"
 
+#include "Adafruit_HTU31D.h"
+
+Adafruit_HTU31D htu = Adafruit_HTU31D();
 
 //RemoteDebug Debug;
 
@@ -136,13 +139,16 @@ String MacAddr;
 void connectWIFI(){
   
   while (WiFi.status() != WL_CONNECTED) {                     // attempt to connect to Wifi network
-    status = WiFi.begin(WIFI_SSID, WIFI_KEY);                 
+    status = WiFi.begin(WIFI_SSID, WIFI_KEY); 
+    WiFi.setSleep(false);                
     uint8_t timeout = 10;
-    while (timeout && (WiFi.status() != WL_CONNECTED)) {       // wait 10 seconds for connection:
+    while (timeout && (WiFi.status() != WL_CONNECTED)) { // wait 10 seconds for connection:
+      digitalWrite(RED_LED_PIN,HIGH);      
       timeout--;
       delay(1000);
     }
     if (WiFi.status()==WL_CONNECTED){
+       digitalWrite(RED_LED_PIN,LOW);
       ESP_LOGI("MAIN","WiFi connected to ssid:%s",WIFI_SSID);
     }
   } 
@@ -152,15 +158,20 @@ void connectWIFI(){
 void connectMQTT(){
 
   if (WiFi.status() != WL_CONNECTED ){
+    Serial.println("WIFI need reconnect");
+
     connectWIFI();
+  }else{
+    Serial.println("WIFI is connected");
   }
 
   client.setBufferSize(4096);
 
   if (WiFi.status() == WL_CONNECTED ){ 
+    client.setKeepAlive(5);
     
     if (client.connect(MQTT_DEVICENAME, MQTT_USER, MQTT_PASS)) {
-
+      //return;
       unsigned long now = millis();
       lastMqttUpdate = now+20000; // Delay MQTT Data update by 20 sec after cnx
 
@@ -381,12 +392,29 @@ void web_otcmd(AsyncWebServerRequest * request){
 
 }
 
+bool led_b=false;
+bool led_g=false;
+bool led_r=false;
 void setup(){
 
   Serial.begin(115200);
   delay(1000);
 
   //Debug.begin("monEsp");  
+
+
+  pinMode(GREEN_LED_PIN,OUTPUT);
+  pinMode(BLUE_LED_PIN,OUTPUT);
+  pinMode(RED_LED_PIN,OUTPUT);
+
+  //digitalWrite(GREEN_LED_PIN,HIGH);
+  //digitalWrite(BLUE_LED_PIN,HIGH);
+  digitalWrite(RED_LED_PIN,HIGH);
+  
+  if (!htu.begin(0x40)) {
+    Serial.println("Couldn't find sensor!");
+    while (1);
+  }
 
   WiFi.mode(WIFI_STA); //Optional
   WiFi.begin(WIFI_SSID, WIFI_KEY);
@@ -396,6 +424,7 @@ void setup(){
     Serial.print(".");
     delay(500);
   }
+  digitalWrite(RED_LED_PIN,LOW);
 
   Serial.setDebugOutput(true);
   
@@ -519,7 +548,7 @@ void updateData(){
 void processResponse(unsigned long response, OpenThermResponseStatus status) {
   
   char msg[64];
-
+  digitalWrite(GREEN_LED_PIN,HIGH);
   if (!ot.isValidResponse(response)) {
     ESP_LOGE("MAIN","OT Invalid reponse:0x%lx status:%d",response,status);
     
@@ -527,7 +556,7 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
       snprintf(msg,64,"Inv Resp:0x%lx,status:%d",response,status);
       publishToTopicStr(msg,OT_LOG_STATE_TOPIC,"text",false); 
     }
-
+    digitalWrite(GREEN_LED_PIN,LOW);
     return;
   }
   
@@ -586,6 +615,7 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
     default:
       ESP_LOGI("MAIN","Boiler Response:[0x%lx] id:[%d]",response,id);
   }
+  digitalWrite(GREEN_LED_PIN,LOW);
 }
 
 unsigned int buildRequest(byte req_idx){
@@ -651,10 +681,25 @@ void handleOpenTherm() {
 }
 
 void loop(){
+  //delay(200);
+  if (!led_b){
+    digitalWrite(BLUE_LED_PIN,HIGH);
+    led_b=true;
+  }else{
+    digitalWrite(BLUE_LED_PIN,LOW);
+    led_b=false;
+  }
+
+
+  sensors_event_t humidity, temp;
   
-  if (!client.connected()) {
+  
+ if (!client.connected()) {
+  Serial.println("need reconnection");
+  Serial.println(client.state());
     connectMQTT();
   }
+  
   esp_task_wdt_reset();         // Reset the Watchdog
   client.loop();               // MQTT Loop to process subscribre request
 
@@ -662,9 +707,20 @@ void loop(){
 
   unsigned long now = millis();
   if (now - lastMqttUpdate > UpdateMqttInterval_ms) {
+   
     lastMqttUpdate = now;
     LogMasterParam();
     updateData();
+
+    htu.getEvent(&humidity, &temp);// populate temp and humidity objects with fresh data
+
+    Serial.print("Temp: "); 
+    Serial.print(temp.temperature);
+    Serial.println(" C");
+  
+    Serial.print("Humidity: ");
+    Serial.print(humidity.relative_humidity);
+    Serial.println(" \% RH");
   }
 
   if (now - lastUpdateDiag > UpdateDiagInterval_ms) {
