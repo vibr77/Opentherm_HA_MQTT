@@ -83,6 +83,10 @@ Represent of the temperature of water returning in the circuit of heating the ho
 
 
 
+<a href="https://www.buymeacoffee.com/vincentbe" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
+
+
 
 
 
