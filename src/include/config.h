@@ -14,7 +14,7 @@ ______________________
 #ifndef _CONFIG_
 #define _CONFIG_
 
-static const char * SW_VERSION="0.40";
+static const char * SW_VERSION="0.51";
 
 // MOVE TO pwd.h
 
@@ -74,6 +74,9 @@ static const char * DISCOVERY_BOILER_TEMP_TOPIC= "homeassistant/sensor/opentherm
 static const char * DISCOVERY_BOILER_RETURN_TEMP_TOPIC="homeassistant/sensor/opentherm-thermostat/boiler_return_temp/";
 static const char * DISCOVERY_BOILER_TARGET_TEMP_TOPIC= "homeassistant/sensor/opentherm-thermostat/boiler_target_temp/config";
 
+static const char * DISCOVERY_INTERNAL_TEMP_TOPIC= "homeassistant/sensor/opentherm-thermostat/internal_temp/config";
+static const char * DISCOVERY_INTERNAL_HUMIDITY_TEMP_TOPIC= "homeassistant/sensor/opentherm-thermostat/internal_humidity/config";
+
 static const char * DISCOVERY_INTEGRAL_ERROR_TOPIC="homeassistant/sensor/opentherm-thermostat/integral_error/config";
 static const char * DISCOVERY_DWH_TEMP_TOPIC="homeassistant/sensor/opentherm-thermostat/dwhtemp/config";
 static const char * DISCOVERY_MAX_MODLVL_TOPIC="homeassistant/number/opentherm-thermostat/maxmodulationlevel/config";
@@ -99,6 +102,9 @@ static const char * DISCOVERY_IDENTIFY_TOPIC="homeassistant/button/opentherm-the
 static const char * DISCOVERY_OT_LOG_TOPIC = "homeassistant/sensor/opentherm-thermostat/ot_log/config";
 
 static const char * AVAILABILITY_TOPIC = "homeassistant/opentherm-thermostat/status";
+
+static const char * INTERNAL_TEMP_STATE_TOPIC = "homeassistant/opentherm-thermostat/internal-temperature/state";
+static const char * INTERNAL_HUMIDITY_STATE_TOPIC = "homeassistant/opentherm-thermostat/internal-humidity/state";
 
 static const char *CURRENT_TEMP_STATE_TOPIC = "homeassistant/opentherm-thermostat/current-temperature/state";
 static const char * CURRENT_TEMP_SET_TOPIC = "homeassistant/opentherm-thermostat/current-temperature/set";

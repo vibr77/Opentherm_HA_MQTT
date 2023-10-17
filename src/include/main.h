@@ -8,6 +8,15 @@
 #include <OpenTherm.h>
 #include "config.h"
 
+
+typedef enum{
+  LED_BLUE,LED_GREEN,LED_RED
+} LED_NOTIF;
+
+
+void toggleLed(LED_NOTIF led);
+void switchLed(LED_NOTIF led, bool newState);
+ 
 void connectWIFI();
 void connectMQTT();
 void IRAM_ATTR handleInterrupt();
@@ -19,6 +28,10 @@ void updateDataDiag();
 void processResponse(unsigned long response, OpenThermResponseStatus status) ;
 unsigned int buildRequest(byte req_idx);
 void handleOpenTherm();
+
+bool led_b=false,led_g=false,led_r=false;
+
+
 
 float oplo=LOW_BAND_TEMP,
       ophi=HIGH_BAND_TEMP,

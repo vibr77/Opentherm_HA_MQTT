@@ -217,6 +217,58 @@ void MQTT_DiscoveryMsg_Sensor_WaterHeating(){
 }
 
 
+void MQTT_DiscoveryMsg_Sensor_InternalHumidity(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "Internal humidity";
+  doc["dev_cla"] = "Humidity";
+  doc["unit_of_measurement"] = "%";
+  
+  doc["suggested_display_precision"]=2;
+  char ID[64];
+  sprintf(ID,"%s_INTERNALHUMIDITY",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+  doc["qos"]=0;
+  doc["state_topic"]=INTERNAL_HUMIDITY_STATE_TOPIC;
+  doc["value_template"]="{{ value_json.value }}";
+  
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_INTERNAL_HUMIDITY_TEMP_TOPIC,doc);
+
+}
+
+
+void MQTT_DiscoveryMsg_Sensor_InternalTemperature(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "Internal temperature";
+  doc["dev_cla"] = "temperature";
+  doc["unit_of_measurement"] = "°C";
+  
+  doc["suggested_display_precision"]=2;
+  char ID[64];
+  sprintf(ID,"%s_INTERNALTEMP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+  doc["qos"]=0;
+  doc["state_topic"]=INTERNAL_TEMP_STATE_TOPIC;
+  doc["value_template"]="{{ value_json.temp }}";
+  
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_INTERNAL_TEMP_TOPIC,doc);
+
+}
+
+
+//#######
+
 void MQTT_DiscoveryMsg_Sensor_BoilerTemperature(){
 
   DynamicJsonDocument doc(2048);

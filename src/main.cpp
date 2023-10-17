@@ -1,6 +1,6 @@
 /*
 __   _____ ___ ___        Author: Vincent BESSON
- \ \ / /_ _| _ ) _ \      Release: 0.43
+ \ \ / /_ _| _ ) _ \      Release: 0.51
   \ V / | || _ \   /      Date: 20230919
    \_/ |___|___/_|_\      Description: ESP32 Mini Home Assistant Opentherm Master Thermostat
                 2023      Licence: Creative Commons
@@ -8,20 +8,21 @@ ______________________
 
 Release changelog:
 ------------------
-  +20230919: Initial Commit
+  +20231016: Stable integrated release, test to be done
   +20231001: First tested & stable version
+  +20230919: Initial Commit
  
 
 Todo:
 -----------------------
-+ Add identify button with Led on PCB
-+ Connect reboot reason
++ Add identify button with Led on PCB             //
++ Connect reboot reason                           // OK to be tested
 + Check on MQTT disconnection MQTT Server Log
-+ MQTT disconnect -> watchdog reboot to be fixed
-+ Link OT Log [OK] 
++ MQTT disconnect -> watchdog reboot to be fixed  // OK
++ Link OT Log [OK]                                // OK
 + Test the default config button
-+ Write the doc
-
++ Write the doc                                   // Ongoing
++ WIFI & SETTING CAPTIVE PORTAL             ex:      https://github.com/adamff-dev/ESP8266-Captive-Portal/blob/master/WiFi_Captive_Portal.ino
 */
 
 #include <esp_task_wdt.h>
@@ -60,14 +61,15 @@ Adafruit_HTU31D htu = Adafruit_HTU31D();
 OpenTherm ot(OT_IN_PIN, OT_OUT_PIN);
 WiFiClient espClient;
 PubSubClient client((const char*)MQTT_SERVER, MQTT_PORT,  espClient);
-AsyncWebServer server(80); 
+AsyncWebServer server(80);
+sensors_event_t humidity, temp; 
 
 int status = WL_IDLE_STATUS;
 
 void IRAM_ATTR handleInterrupt() {
     ot.handleInterrupt();
 }
-/*
+/* KEEP FOR REFERENCE FROM THE LIB
 typedef enum {
     ESP_RST_UNKNOWN,    //!< Reset reason can not be determined
     ESP_RST_POWERON,    //!< Reset due to power-on event
@@ -159,7 +161,6 @@ void connectMQTT(){
 
   if (WiFi.status() != WL_CONNECTED ){
     Serial.println("WIFI need reconnect");
-
     connectWIFI();
   }else{
     Serial.println("WIFI is connected");
@@ -171,7 +172,10 @@ void connectMQTT(){
     client.setKeepAlive(5);
     
     if (client.connect(MQTT_DEVICENAME, MQTT_USER, MQTT_PASS)) {
-      //return;
+      
+      led_r=false;
+      digitalWrite(RED_LED_PIN,LOW);
+      
       unsigned long now = millis();
       lastMqttUpdate = now+20000; // Delay MQTT Data update by 20 sec after cnx
 
@@ -224,7 +228,6 @@ void connectMQTT(){
       client.subscribe(TEMP_DHW_STATE_TOPIC);
       client.subscribe(TEMP_DHW_SET_TOPIC);
 
-      //client.subscribe(SETPOINT_OVERRIDE_STATE_TOPIC);
       client.subscribe(SETPOINT_OVERRIDE_SET_TOPIC);
       
       client.subscribe(INIT_DEFAULT_VALUES_TOPIC);
@@ -233,6 +236,8 @@ void connectMQTT(){
      
     } else {
       ESP_LOGE("MAIN","NOT Connected to MQTT");
+      digitalWrite(RED_LED_PIN,HIGH);
+      led_r=true;
     }
   }
   
@@ -392,39 +397,109 @@ void web_otcmd(AsyncWebServerRequest * request){
 
 }
 
-bool led_b=false;
-bool led_g=false;
-bool led_r=false;
+void switchLed(LED_NOTIF led, bool newState){
+  
+  switch(led){
+    case LED_BLUE :
+      if (newState==true){
+        digitalWrite(BLUE_LED_PIN,HIGH);
+        led_b=true;
+      }else{
+        digitalWrite(BLUE_LED_PIN,LOW);
+        led_b=false;
+      }
+      break;
+    case LED_GREEN :
+      if (newState==true){
+        digitalWrite(GREEN_LED_PIN,HIGH);
+        led_g=true;
+      }else{
+        digitalWrite(GREEN_LED_PIN,LOW);
+        led_g=false;
+      }
+      break;
+    case LED_RED :
+      if (newState==true){
+        digitalWrite(RED_LED_PIN,HIGH);
+        led_r=true;
+      }else{
+        digitalWrite(RED_LED_PIN,LOW);
+        led_r=false;
+      }
+      break;
+    default :
+    break;
+  }
+}
+
+void toggleLed(LED_NOTIF led){
+
+  switch(led){
+    case LED_BLUE :
+      if (led_b==true){
+        led_b=false;
+        digitalWrite(BLUE_LED_PIN,LOW);
+      }else{
+        led_b=true;
+        digitalWrite(BLUE_LED_PIN,HIGH);
+      }
+      break;
+    case LED_GREEN :
+      if (led_g==true){
+        led_g=false;
+        digitalWrite(GREEN_LED_PIN,LOW);
+      }else{
+        led_g=true;
+        digitalWrite(GREEN_LED_PIN,HIGH);
+      }
+      break;
+    case LED_RED :
+      if (led_r==true){
+        led_r=false;
+        digitalWrite(RED_LED_PIN,LOW);
+      }else{
+        led_r=true;
+        digitalWrite(RED_LED_PIN,HIGH);
+      }
+      break;
+    default :
+    break;
+  
+  }
+}
+
 void setup(){
 
   Serial.begin(115200);
   delay(1000);
 
   //Debug.begin("monEsp");  
-
-
   pinMode(GREEN_LED_PIN,OUTPUT);
   pinMode(BLUE_LED_PIN,OUTPUT);
   pinMode(RED_LED_PIN,OUTPUT);
-
-  //digitalWrite(GREEN_LED_PIN,HIGH);
-  //digitalWrite(BLUE_LED_PIN,HIGH);
-  digitalWrite(RED_LED_PIN,HIGH);
+  
+  switchLed(LED_RED,true);
+  switchLed(LED_BLUE,true);
   
   if (!htu.begin(0x40)) {
-    Serial.println("Couldn't find sensor!");
+    ESP_LOGE("MAIN","HTU31D sensor could not be found on I2C addr 0x40");
     while (1);
   }
 
+  switchLed(LED_GREEN,true);
+ 
   WiFi.mode(WIFI_STA); //Optional
   WiFi.begin(WIFI_SSID, WIFI_KEY);
-  Serial.println("\nConnecting");
 
+  ESP_LOGI("MAIN","Connecting to  WiFi SSID:%s",WIFI_SSID);
+  
   while(WiFi.status() != WL_CONNECTED){
     Serial.print(".");
     delay(500);
+    toggleLed(LED_RED);
   }
-  digitalWrite(RED_LED_PIN,LOW);
+  
+  switchLed(LED_RED,false);
 
   Serial.setDebugOutput(true);
   
@@ -446,6 +521,9 @@ void setup(){
   MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature();
   MQTT_DiscoveryMsg_Sensor_dwhTemperature();
   MQTT_DiscoveryMsg_Sensor_IntegralError();
+
+  MQTT_DiscoveryMsg_Sensor_InternalTemperature();
+  MQTT_DiscoveryMsg_Sensor_InternalHumidity();
   
   MQTT_DiscoveryMsg_Number_MaxModulationLevel();
   MQTT_DiscoveryMsg_Number_LowBandTemperature();
@@ -470,14 +548,11 @@ void setup(){
   MQTT_DiscoveryMsg_Button_InitDefValues();
 
   publishAvailable();
-  //publishInitValue2();
-  //publishInitValue5(19);
 
   #define BOOT_REASON_MESSAGE_SIZE 150
   char bootReasonMessage [BOOT_REASON_MESSAGE_SIZE];
   getBootReasonMessage(bootReasonMessage, BOOT_REASON_MESSAGE_SIZE);
   publishToTopicStr(bootReasonMessage,OT_LOG_STATE_TOPIC,"text",false); 
-
 
   unsigned long now = millis();
   startTime=now/1000;
@@ -493,11 +568,9 @@ void setup(){
   
   esp_task_wdt_init(WDT_TIMEOUT, true);             // enable panic so ESP32 restarts
   esp_task_wdt_add(NULL);                           // add current thread to WDT watch
-
-  //esp_reset_reason_t BootReason = esp_reset_reason();
-  //if ( BootReason == ESP_RST_TASK_WDT  ) {                 // Reset due to task watchdog.
-  //    Serial.println("Reboot was because of WDT!!"); // TODO IMPLEMENTATION OF MQTT PUBLISH
-  //}
+  
+  switchLed(LED_GREEN,false);
+  switchLed(LED_BLUE,true);
 }
 
 
@@ -543,12 +616,15 @@ void updateData(){
   
   publishToTopicFloat(dwhTemp,ACTUAL_TEMP_DHW_STATE_TOPIC,"temp",false);
   
+  publishToTopicFloat(temp.temperature,INTERNAL_TEMP_STATE_TOPIC,"temp",false);
+  publishToTopicFloat(humidity.relative_humidity,INTERNAL_HUMIDITY_STATE_TOPIC,"value",false);
+
 }
 
 void processResponse(unsigned long response, OpenThermResponseStatus status) {
   
   char msg[64];
-  digitalWrite(GREEN_LED_PIN,HIGH);
+  switchLed(LED_GREEN,true);
   if (!ot.isValidResponse(response)) {
     ESP_LOGE("MAIN","OT Invalid reponse:0x%lx status:%d",response,status);
     
@@ -556,7 +632,8 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
       snprintf(msg,64,"Inv Resp:0x%lx,status:%d",response,status);
       publishToTopicStr(msg,OT_LOG_STATE_TOPIC,"text",false); 
     }
-    digitalWrite(GREEN_LED_PIN,LOW);
+    
+    switchLed(LED_GREEN,false);
     return;
   }
   
@@ -575,8 +652,6 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
       isFlameOn=response & 0x8;
       isHotWaterActive=response & 0x4;
       isCentralHeatingActive=response & 0x2;
-
-      //ESP_LOGI("MAIN","Boiler status:[%s]",String(boiler_status, BIN).c_str());
       break;
 
     case OpenThermMessageID::TSet:
@@ -615,7 +690,7 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
     default:
       ESP_LOGI("MAIN","Boiler Response:[0x%lx] id:[%d]",response,id);
   }
-  digitalWrite(GREEN_LED_PIN,LOW);
+  switchLed(LED_GREEN,false);
 }
 
 unsigned int buildRequest(byte req_idx){
@@ -626,7 +701,7 @@ unsigned int buildRequest(byte req_idx){
       status = 0;
       if (bCentralHeatingEnable && bHeatingMode) status |= MASTER_STATUS_CH_ENABLED;
       if (bWaterHeatingEnable) status |= MASTER_STATUS_DHW_ENABLED;
-        //if (CoolingEnabled) status |= MASTER_STATUS_COOLING_ENABLED;
+        //if (CoolingEnabled) status |= MASTER_STATUS_COOLING_ENABLED;        // No cooling 
       status <<= 8;
       return ot.buildRequest(OpenThermMessageType::READ, OpenThermMessageID::Status, status);
     case OpenThermMessageID::TSet:
@@ -662,7 +737,7 @@ void handleOpenTherm() {
         op = nosp_override;
       }
       */
-      unsigned int request = buildRequest(req_idx);  // Rotating the Request
+      unsigned int request = buildRequest(req_idx);                 // Rotating the Request
       ot.sendRequestAync(request);
       ESP_LOGI("MAIN","Thermostat Request:[0x%lx]",request);
       if (bOtLogEnable==true){
@@ -681,46 +756,31 @@ void handleOpenTherm() {
 }
 
 void loop(){
-  //delay(200);
-  if (!led_b){
-    digitalWrite(BLUE_LED_PIN,HIGH);
-    led_b=true;
-  }else{
-    digitalWrite(BLUE_LED_PIN,LOW);
-    led_b=false;
-  }
 
-
-  sensors_event_t humidity, temp;
+// WARNING DO NOT PUT DELAY OR IT WILL NOT ENABLE MQTT TO CATCH SUBSCRIBE MESSAGE
+// PLEASE MAKE SURE MQTT CLIENT ID IS UNIQUE OTHERWISE YOU WILL GET DISCONNECTION
   
+  toggleLed(LED_BLUE);
   
- if (!client.connected()) {
-  Serial.println("need reconnection");
-  Serial.println(client.state());
+  if (!client.connected()) {
+    digitalWrite(RED_LED_PIN,HIGH);
+    led_r=true;
+    ESP_LOGI("MAIN","MQTT reconnection reason client.state:%d",client.state());
     connectMQTT();
   }
-  
+  client.loop();                // MQTT Loop to process subscribre request
   esp_task_wdt_reset();         // Reset the Watchdog
-  client.loop();               // MQTT Loop to process subscribre request
-
-  handleOpenTherm();           // Process Opentherm Response & Request
+  handleOpenTherm();            // Process Opentherm Response & Request
 
   unsigned long now = millis();
   if (now - lastMqttUpdate > UpdateMqttInterval_ms) {
-   
     lastMqttUpdate = now;
     LogMasterParam();
     updateData();
 
     htu.getEvent(&humidity, &temp);// populate temp and humidity objects with fresh data
+    ESP_LOGI("MAIN","Controller internal sensor temperature:[%.2f°C], humidity:[%.2f\%]",temp.temperature,humidity.relative_humidity);
 
-    Serial.print("Temp: "); 
-    Serial.print(temp.temperature);
-    Serial.println(" C");
-  
-    Serial.print("Humidity: ");
-    Serial.print(humidity.relative_humidity);
-    Serial.println(" \% RH");
   }
 
   if (now - lastUpdateDiag > UpdateDiagInterval_ms) {
