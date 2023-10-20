@@ -35,8 +35,10 @@ Todo:
 
 #include <WiFiUdp.h>
 
-//#include <ArduinoOTA.h>
-//#include <RemoteDebug.h>
+#include <ArduinoOTA.h>
+#include <ESPmDNS.h>
+
+#include "RemoteDebug.h"
 
 #define MASTER_STATUS_CH_ENABLED 0x1
 #define MASTER_STATUS_DHW_ENABLED 0x2
@@ -56,7 +58,7 @@ Todo:
 
 Adafruit_HTU31D htu = Adafruit_HTU31D();
 
-//RemoteDebug Debug;
+RemoteDebug Debug;
 
 OpenTherm ot(OT_IN_PIN, OT_OUT_PIN);
 WiFiClient espClient;
@@ -132,7 +134,7 @@ float pid(float sp, float pv, float pv_last, float& ierr, float dt) {
   }
   ierr = I;
 
-  ESP_LOGI("MAIN","PID op:[%f] pv:[%f] dt:[%f] sp:[%f] P:[%f] I:[%f]",op,pv,dt,sp,P,I);
+  LOGI("MAIN","PID op:[%f] pv:[%f] dt:[%f] sp:[%f] P:[%f] I:[%f]",op,pv,dt,sp,P,I);
   return op;
 }
 
@@ -145,13 +147,14 @@ void connectWIFI(){
     WiFi.setSleep(false);                
     uint8_t timeout = 10;
     while (timeout && (WiFi.status() != WL_CONNECTED)) { // wait 10 seconds for connection:
-      digitalWrite(RED_LED_PIN,HIGH);      
+      switchLed(LED_RED,true);      
       timeout--;
       delay(1000);
     }
     if (WiFi.status()==WL_CONNECTED){
-       digitalWrite(RED_LED_PIN,LOW);
-      ESP_LOGI("MAIN","WiFi connected to ssid:%s",WIFI_SSID);
+       switchLed(LED_RED,false);
+      LOGI("MAIN","WiFi connected to ssid:%s",WIFI_SSID);
+      
     }
   } 
   return;
@@ -160,21 +163,26 @@ void connectWIFI(){
 void connectMQTT(){
 
   if (WiFi.status() != WL_CONNECTED ){
-    Serial.println("WIFI need reconnect");
+    LOGI("MAIN","WiFi not connected to ssid:%s",WIFI_SSID);
     connectWIFI();
   }else{
-    Serial.println("WIFI is connected");
+    LOGI("MAIN","WiFi connected to ssid:%s",WIFI_SSID);
   }
 
   client.setBufferSize(4096);
 
   if (WiFi.status() == WL_CONNECTED ){ 
     client.setKeepAlive(5);
-    
+    uint8_t timeout = 10;
+    while (timeout && !client.connect(MQTT_DEVICENAME, MQTT_USER, MQTT_PASS)){
+      toggleLed(LED_RED);
+      timeout--;
+      delay(1000);
+    }
+
     if (client.connect(MQTT_DEVICENAME, MQTT_USER, MQTT_PASS)) {
-      
-      led_r=false;
-      digitalWrite(RED_LED_PIN,LOW);
+      LOGI("MAIN","MQTT connected to server:%s, deviceName:%s",MQTT_USER,MQTT_DEVICENAME);
+      switchLed(LED_RED,false);
       
       unsigned long now = millis();
       lastMqttUpdate = now+20000; // Delay MQTT Data update by 20 sec after cnx
@@ -232,12 +240,11 @@ void connectMQTT(){
       
       client.subscribe(INIT_DEFAULT_VALUES_TOPIC);
 
-      ESP_LOGI("MAIN","Connected to MQTT");
+      LOGI("MAIN","Connected to MQTT");
      
     } else {
-      ESP_LOGE("MAIN","NOT Connected to MQTT");
-      digitalWrite(RED_LED_PIN,HIGH);
-      led_r=true;
+      LOGE("MAIN","NOT Connected to MQTT");
+      switchLed(LED_RED,true);
     }
   }
   
@@ -473,7 +480,7 @@ void setup(){
   Serial.begin(115200);
   delay(1000);
 
-  //Debug.begin("monEsp");  
+  
   pinMode(GREEN_LED_PIN,OUTPUT);
   pinMode(BLUE_LED_PIN,OUTPUT);
   pinMode(RED_LED_PIN,OUTPUT);
@@ -482,7 +489,8 @@ void setup(){
   switchLed(LED_BLUE,true);
   
   if (!htu.begin(0x40)) {
-    ESP_LOGE("MAIN","HTU31D sensor could not be found on I2C addr 0x40");
+    ESP_LOGE("MAIN","HTU31D sensor could not be found on I2C addr 0x40"); // DO NOT CHANGED
+    
     while (1);
   }
 
@@ -491,26 +499,28 @@ void setup(){
   WiFi.mode(WIFI_STA); //Optional
   WiFi.begin(WIFI_SSID, WIFI_KEY);
 
-  ESP_LOGI("MAIN","Connecting to  WiFi SSID:%s",WIFI_SSID);
+  LOGI("MAIN","Connecting to  WiFi SSID:%s",WIFI_SSID);
   
   while(WiFi.status() != WL_CONNECTED){
     Serial.print(".");
     delay(500);
     toggleLed(LED_RED);
   }
+
+  Debug.begin(MQTT_DEVICENAME);      // start Remote debugger
   
   switchLed(LED_RED,false);
 
   Serial.setDebugOutput(true);
   
-  ESP_LOGI("MAIN","Connected to the WiFi network %s",WIFI_SSID);
-  ESP_LOGI("MAIN","Local IP %s",WiFi.localIP().toString().c_str());
+  LOGI("MAIN","Connected to the WiFi network %s",WIFI_SSID);
+  LOGI("MAIN","Local IP %s",WiFi.localIP().toString().c_str());
         
    // ArduinoOTA.setHostname("monEsp"); // on donne une petit nom a notre module
    // ArduinoOTA.begin(); // initialisation de l'OTA
 
   connectMQTT();
-  delay(1000);
+  delay(1000); 
 
   // Home Automation Discovery MQTT
   MQTT_DiscoveryMsg_Climate();
@@ -571,6 +581,38 @@ void setup(){
   
   switchLed(LED_GREEN,false);
   switchLed(LED_BLUE,true);
+
+  ArduinoOTA.setHostname(MQTT_DEVICENAME);
+  ArduinoOTA.setPassword(OTA_PASS);
+
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH)
+        type = "sketch";
+      else // U_SPIFFS
+        type = "filesystem";
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      LOGW("MAIN","Start updating firmware" );
+    })
+    .onEnd([]() {
+      LOGI("MAIN","\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      LOGI("MAIN","Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      LOGE("MAIN","Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR){ LOGE("MAIN","Auth Failed");}
+      else if (error == OTA_BEGIN_ERROR) {LOGE("MAIN","Begin Failed");}
+      else if (error == OTA_CONNECT_ERROR) {LOGE("MAIN","Connect Failed");}
+      else if (error == OTA_RECEIVE_ERROR) {LOGE("MAIN","Receive Failed");}
+      else if (error == OTA_END_ERROR){ LOGE("MAIN","End Failed");}
+    });
+
+  ArduinoOTA.begin();
+
 }
 
 
@@ -626,7 +668,7 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
   char msg[64];
   switchLed(LED_GREEN,true);
   if (!ot.isValidResponse(response)) {
-    ESP_LOGE("MAIN","OT Invalid reponse:0x%lx status:%d",response,status);
+    LOGE("MAIN","OT Invalid reponse:0x%lx status:%d",response,status);
     
     if (bOtLogEnable==true){
       snprintf(msg,64,"Inv Resp:0x%lx,status:%d",response,status);
@@ -656,39 +698,39 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
 
     case OpenThermMessageID::TSet:
       retT = (response & 0xFFFF) / 256.0;
-      ESP_LOGI("MAIN","Boiler Response 0x%lx Set CentralHeating target temp:[%f]",response,retT);
+      LOGI("MAIN","Boiler Response 0x%lx Set CentralHeating target temp:[%f]",response,retT);
       break;
 
     case OpenThermMessageID::Tboiler:
       retT = (response & 0xFFFF) / 256.0;
       boilerTemp=retT;
-      ESP_LOGI("MAIN","Boiler Response: 0x%lx CentralHeating Current temp:[%f]",response,retT);
+      LOGI("MAIN","Boiler Response: 0x%lx CentralHeating Current temp:[%f]",response,retT);
       break;
 
     case OpenThermMessageID::Tdhw:
       retT = (response & 0xFFFF) / 256.0;
       dwhTemp=retT;
-      ESP_LOGI("MAIN","Boiler Response: 0x%lx Domestic Water Heating Current temp:[%f]",response,retT);
+      LOGI("MAIN","Boiler Response: 0x%lx Domestic Water Heating Current temp:[%f]",response,retT);
       break;
 
     case OpenThermMessageID::RelModLevel:
       flameLevel = (response & 0xFFFF) / 256.0;
-      ESP_LOGI("MAIN","Boiler Response: 0x%lx Flame Level:[%f]",response,flameLevel);
+      LOGI("MAIN","Boiler Response: 0x%lx Flame Level:[%f]",response,flameLevel);
       break;
 
     case OpenThermMessageID::MaxRelModLevelSetting:
       retT = (response & 0xFFFF) / 256.0;
-      ESP_LOGI("MAIN","Boiler Response: 0x%lx Max Modulation Level:[%f]",response,retT);
+      LOGI("MAIN","Boiler Response: 0x%lx Max Modulation Level:[%f]",response,retT);
       break;
 
      case OpenThermMessageID::Tret:
       retT = (response & 0xFFFF) / 256.0;
       boilerReturnTemp=retT;
-      ESP_LOGI("MAIN","Boiler Response: 0x%lx Return water temperature:[%f]",response,retT);
+      LOGI("MAIN","Boiler Response: 0x%lx Return water temperature:[%f]",response,retT);
       break;
 
     default:
-      ESP_LOGI("MAIN","Boiler Response:[0x%lx] id:[%d]",response,id);
+      LOGI("MAIN","Boiler Response:[0x%lx] id:[%d]",response,id);
   }
   switchLed(LED_GREEN,false);
 }
@@ -739,7 +781,7 @@ void handleOpenTherm() {
       */
       unsigned int request = buildRequest(req_idx);                 // Rotating the Request
       ot.sendRequestAync(request);
-      ESP_LOGI("MAIN","Thermostat Request:[0x%lx]",request);
+      LOGI("MAIN","Thermostat Request:[0x%lx]",request);
       if (bOtLogEnable==true){
         char msg[32];
         snprintf(msg,32,"Req:0x%lx",request);
@@ -759,13 +801,12 @@ void loop(){
 
 // WARNING DO NOT PUT DELAY OR IT WILL NOT ENABLE MQTT TO CATCH SUBSCRIBE MESSAGE
 // PLEASE MAKE SURE MQTT CLIENT ID IS UNIQUE OTHERWISE YOU WILL GET DISCONNECTION
-  
+  ArduinoOTA.handle();
   toggleLed(LED_BLUE);
   
   if (!client.connected()) {
-    digitalWrite(RED_LED_PIN,HIGH);
-    led_r=true;
-    ESP_LOGI("MAIN","MQTT reconnection reason client.state:%d",client.state());
+    switchLed(LED_RED,true);
+    LOGI("MAIN","MQTT reconnection reason client.state:%d",client.state());
     connectMQTT();
   }
   client.loop();                // MQTT Loop to process subscribre request
@@ -779,13 +820,15 @@ void loop(){
     updateData();
 
     htu.getEvent(&humidity, &temp);// populate temp and humidity objects with fresh data
-    ESP_LOGI("MAIN","Controller internal sensor temperature:[%.2f°C], humidity:[%.2f\%]",temp.temperature,humidity.relative_humidity);
-
+    LOGI("MAIN","Controller internal sensor temperature:[%.2f°C], humidity:[%.2f\%]",temp.temperature,humidity.relative_humidity);
+    
   }
 
   if (now - lastUpdateDiag > UpdateDiagInterval_ms) {
     updateDataDiag();
     lastUpdateDiag = now;
   }
-
+  Debug.handle();
+  //ArduinoOTA.poll();
+   
 }

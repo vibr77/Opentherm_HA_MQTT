@@ -9,10 +9,29 @@ ______________________
 */ 
 #include <Arduino.h>
 #include "pwd.h"
+#include "esp_log.h"
+
 #pragma once
 
 #ifndef _CONFIG_
 #define _CONFIG_
+
+#ifdef DEBUG_ENV
+
+#define __FORMAT(FORMAT) "(%s:%d) " FORMAT
+#define LOGD(TAG, FORMAT, ...) ESP_LOGD(TAG, __FORMAT(FORMAT), __func__, __LINE__, ##__VA_ARGS__); debugD(__FORMAT(FORMAT), __func__, __LINE__, ##__VA_ARGS__);
+#define LOGI(TAG, FORMAT, ...) ESP_LOGI(TAG, __FORMAT(FORMAT), __func__, __LINE__, ##__VA_ARGS__); debugI(__FORMAT(FORMAT), __func__, __LINE__, ##__VA_ARGS__);
+#define LOGW(TAG, FORMAT, ...) ESP_LOGW(TAG, __FORMAT(FORMAT), __func__, __LINE__, ##__VA_ARGS__); debugW(__FORMAT(FORMAT), __func__, __LINE__, ##__VA_ARGS__);
+#define LOGE(TAG, FORMAT, ...) ESP_LOGE(TAG, __FORMAT(FORMAT), __func__, __LINE__, ##__VA_ARGS__); debugE(__FORMAT(FORMAT), __func__, __LINE__, ##__VA_ARGS__);
+#endif
+
+#ifndef DEBUG_ENV
+#define LOGD(TAG, FORMAT, ...) ;
+#define LOGI(TAG, FORMAT, ...) ;
+#define LOGW(TAG, FORMAT, ...) ;
+#define LOGE(TAG, FORMAT, ...) ;
+#endif
+
 
 static const char * SW_VERSION="0.51";
 
@@ -27,8 +46,8 @@ static const char * SW_VERSION="0.51";
 
 static const int   MQTT_PORT = 1883;
 
-static const char * MQTT_DEVICENAME="opentherm-Boilerprod";
-static const char * MQTT_DEV_UNIQUE_ID="OT_B_02";
+static const char * MQTT_DEVICENAME="opentherm-Boiler";
+static const char * MQTT_DEV_UNIQUE_ID="OT_B_01";
 
 static const int HTTP_PORT = 80;
 

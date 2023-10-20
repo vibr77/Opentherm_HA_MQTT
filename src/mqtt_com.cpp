@@ -3,11 +3,13 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
+#include <RemoteDebug.h>
 
 #include "include/mqtt_com.h"
 #include "esp_log.h"
 
 extern PubSubClient client;
+extern RemoteDebug Debug;
 
 extern float oplo,ophi,sp,t,ierr,op;
 extern bool bCentralHeating, bWaterHeatingEnable,bCentralHeatingEnable,bHeatingMode,bOtLogEnable;
@@ -24,33 +26,34 @@ extern unsigned long lastSpSet,lastPSet;
 
 void LogMasterParam(){
 
-  ESP_LOGI(LOG_TAG,"Master Param oplo:[%f]",oplo);
-  ESP_LOGI(LOG_TAG,"Master Param ophi:[%f]",ophi);
-  ESP_LOGI(LOG_TAG,"Master Param sp:[%f]",sp);
-  ESP_LOGI(LOG_TAG,"Master Param t:[%f]",t);
-  ESP_LOGI(LOG_TAG,"Master Param ierr:[%f]",ierr);
-  ESP_LOGI(LOG_TAG,"Master Param op:[%f]",op);
-  ESP_LOGI(LOG_TAG,"Master Param nosp:[%f]",nosp_override);
-  ESP_LOGI(LOG_TAG,"Master Param MaxModLevel:[%d]",MaxModLevel);
-  ESP_LOGI(LOG_TAG,"Master Param dwhTarget:[%f]",dwhTarget);
-  ESP_LOGI(LOG_TAG,"Master Param dwhTemp:[%f]",dwhTemp);
-  ESP_LOGI(LOG_TAG,"Master Param FlameLevel:[%f]",flameLevel);
+  LOGI(LOG_TAG,"Master Param oplo:[%f]",oplo);
+  LOGI(LOG_TAG,"Master Param ophi:[%f]",ophi);
+  LOGI(LOG_TAG,"Master Param sp:[%f]",sp);
+  LOGI(LOG_TAG,"Master Param t:[%f]",t);
+  LOGI(LOG_TAG,"Master Param ierr:[%f]",ierr);
+  LOGI(LOG_TAG,"Master Param op:[%f]",op);
+  LOGI(LOG_TAG,"Master Param nosp:[%f]",nosp_override);
+  LOGI(LOG_TAG,"Master Param MaxModLevel:[%d]",MaxModLevel);
+  LOGI(LOG_TAG,"Master Param dwhTarget:[%f]",dwhTarget);
+  LOGI(LOG_TAG,"Master Param dwhTemp:[%f]",dwhTemp);
+  LOGI(LOG_TAG,"Master Param FlameLevel:[%f]",flameLevel);
 
-  if (bWaterHeatingEnable==true)
-    ESP_LOGI(LOG_TAG,"Master Param bWaterHeatingEnable:[true]");
-  else
-    ESP_LOGI(LOG_TAG,"Master Param bWaterHeatingEnable:[false]");
+  if (bWaterHeatingEnable==true){
+    LOGI(LOG_TAG,"Master Param bWaterHeatingEnable:[true]");
+  }else{
+    LOGI(LOG_TAG,"Master Param bWaterHeatingEnable:[false]");
+  }
+  if (bCentralHeatingEnable==true){
+    LOGI(LOG_TAG,"Master Param bCentralHeatingEnable:[true]");
+  }else{
+    LOGI(LOG_TAG,"Master Param bCentralHeatingEnable:[false]");
+  }
 
-  if (bCentralHeatingEnable==true)
-    ESP_LOGI(LOG_TAG,"Master Param bCentralHeatingEnable:[true]");
-  else
-    ESP_LOGI(LOG_TAG,"Master Param bCentralHeatingEnable:[false]");
-  
-  if (bHeatingMode==true)
-    ESP_LOGI(LOG_TAG,"Master Param bHeatingMode:[true]");
-  else
-    ESP_LOGI(LOG_TAG,"Master Param bHeatingMode:[false]");
-
+  if (bHeatingMode==true){
+    LOGI(LOG_TAG,"Master Param bHeatingMode:[true]");
+  }else{
+    LOGI(LOG_TAG,"Master Param bHeatingMode:[false]");
+  }
 }
 
 
@@ -63,12 +66,12 @@ DynamicJsonDocument getDeviceBlock(){
     doc["dev"]["mdl"]="ESP32_MASTER_OT_01";
     doc["dev"]["mf"]="VIBR";
     doc["dev"]["sw"]=SW_VERSION;
-    doc["dev"]["hw_version"]="1.0";
+    doc["dev"]["hw_version"]="1.1";
 
+  
     doc["availability"]["topic"]=AVAILABILITY_TOPIC;
     doc["availability"]["payload_available"]="ONLINE";
     doc["availability"]["payload_not_available"]="OFFLINE";
-    doc["availability"]["value_template"]="{{ value_json.status }}";
 
     return doc;
 }
@@ -364,6 +367,7 @@ void MQTT_DiscoveryMsg_Sensor_LeadingDevice(){
   doc["availability"]=dev["availability"];
 
   bool published= sendMqttMsg(DISCOVERY_LEADING_DEVICE_TOPIC,doc);
+  
 
 }
 
@@ -849,25 +853,25 @@ void MQTT_DiscoveryMsg_Button_InitDefValues(){
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  ESP_LOGD(LOG_TAG,"MQTT Callback topic:[%s]",topic);
+  LOGD(LOG_TAG,"MQTT Callback topic:[%s]",topic);
 
   char* p = (char*)malloc((length+1)*sizeof(char));
   memcpy(p,payload,length);
   p[length]=0;
   bool pubResult=false;
 
-  ESP_LOGD(LOG_TAG,"MQTT Callback topic:[%s] payload:[%s]",topic,p);
+  LOGD(LOG_TAG,"MQTT Callback topic:[%s] payload:[%s]",topic,p);
 
   // CURRENT TEMPERATURE
   if (!strcmp(topic, CURRENT_TEMP_STATE_TOPIC)) {
     float t1=getPayloadFloatValue("temp",p);
     if (t1>0) {
       t=t1;
-      ESP_LOGD(LOG_TAG,"CURRENT_TEMP_STATE_TOPIC new temperature:%f",t1);
+      LOGD(LOG_TAG,"CURRENT_TEMP_STATE_TOPIC new temperature:%f",t1);
       unsigned long now = millis();
       lastPSet=now;
     }else{
-      ESP_LOGE(LOG_TAG,"CURRENT_TEMP_STATE_TOPIC value <= 0 error");
+      LOGE(LOG_TAG,"CURRENT_TEMP_STATE_TOPIC value <= 0 error");
     }
   }
   else if (!strcmp(topic, CURRENT_TEMP_SET_TOPIC)) {
@@ -876,11 +880,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
       pubResult=publishToTopicFloat(t1,CURRENT_TEMP_STATE_TOPIC,"temp",true); // Publish the new température;
       if (pubResult==true){
         t=t1;
-        ESP_LOGD(LOG_TAG,"CURRENT_TEMP_SET_TOPIC new temperature:%f",t1);
+        LOGD(LOG_TAG,"CURRENT_TEMP_SET_TOPIC new temperature:%f",t1);
        
         
       }else{
-        ESP_LOGE(LOG_TAG,"CURRENT_TEMP_SET_TOPIC publish error");
+        LOGE(LOG_TAG,"CURRENT_TEMP_SET_TOPIC publish error");
       }
     }
   }
@@ -888,14 +892,14 @@ void callback(char* topic, byte* payload, unsigned int length) {
   // SETPOINT
   else if (!strcmp(topic, TEMP_SETPOINT_STATE_TOPIC)) {
     float sp1=getPayloadFloatValue("temp",p);
-    ESP_LOGD(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC payload:[%s] conversion to float:[%f]",p,sp1);
+    LOGD(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC payload:[%s] conversion to float:[%f]",p,sp1);
     if (sp1>0) {
-      ESP_LOGD(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC new temperature:%f",sp1);
+      LOGD(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC new temperature:%f",sp1);
       sp=sp1;
       unsigned long now = millis();
       lastSpSet=now;
     }else{
-      ESP_LOGE(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC value <= 0 error");
+      LOGE(LOG_TAG,"TEMP_SETPOINT_STATE_TOPIC value <= 0 error");
     }
   
   }else if (!strcmp(topic, TEMP_SETPOINT_SET_TOPIC)) {
@@ -904,10 +908,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
       
       pubResult=publishToTopicFloat(sp1,TEMP_SETPOINT_STATE_TOPIC,"temp",true); // Publish the new température;
       if (pubResult==true){
-        ESP_LOGD(LOG_TAG,"TEMP_SETPOINT_SET_TOPIC temperature:[%f]",sp1);
+        LOGD(LOG_TAG,"TEMP_SETPOINT_SET_TOPIC temperature:[%f]",sp1);
         sp=sp1;
       }else{
-        ESP_LOGE(LOG_TAG,"TEMP_SETPOINT_SET_TOPIC publish error");
+        LOGE(LOG_TAG,"TEMP_SETPOINT_SET_TOPIC publish error");
       }
     }
   }
@@ -917,19 +921,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
     
     char * mode=getPayloadCharValue("mode",p);
     if (mode!=NULL){
-      ESP_LOGD(LOG_TAG,"MODE_STATE_TOPIC getPayloadCharValue:[%s]",mode);
+      LOGD(LOG_TAG,"MODE_STATE_TOPIC getPayloadCharValue:[%s]",mode);
       if (!strcmp(mode,"heat")){
         bHeatingMode=true;
-        ESP_LOGD(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] bCentralHeatingEnable:true",p);
+        LOGD(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] bCentralHeatingEnable:true",p);
       }else if (!strcmp(mode,"off")){
         bHeatingMode=false;
-        ESP_LOGD(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] bCentralHeatingEnable:false",p);
+        LOGD(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] bCentralHeatingEnable:false",p);
       }else{
-        ESP_LOGE(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] unknown",p);
+        LOGE(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] unknown",p);
       }
       free(mode);
     }else{
-      ESP_LOGE(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] is null",p);
+      LOGE(LOG_TAG,"MODE_STATE_TOPIC mode:[%s] is null",p);
     }
   }else if (!strcmp(topic, MODE_SET_TOPIC)) {
     if (!strcmp(p,"heat") && bCentralHeatingEnable==true){
@@ -937,20 +941,20 @@ void callback(char* topic, byte* payload, unsigned int length) {
       pubResult=publishToTopicStr(p,MODE_STATE_TOPIC,"mode",true); // Publish the new température;
       if (pubResult==true){
         bHeatingMode=true;
-        ESP_LOGD(LOG_TAG,"MODE_SET_TOPIC mode:[%s] bCentralHeatingEnable:true",p);
+        LOGD(LOG_TAG,"MODE_SET_TOPIC mode:[%s] bCentralHeatingEnable:true",p);
       }else{
-        ESP_LOGE(LOG_TAG,"MODE_SET_TOPIC publish error");
+        LOGE(LOG_TAG,"MODE_SET_TOPIC publish error");
       }
     }else if (!strcmp(p,"off")){
       pubResult=publishToTopicStr(p,MODE_STATE_TOPIC,"mode",true); // Publish the new température;
       if (pubResult==true){
         bHeatingMode=false;
-        ESP_LOGD(LOG_TAG,"MODE_SET_TOPIC mode:[%s] bCentralHeatingEnable:false",p);
+        LOGD(LOG_TAG,"MODE_SET_TOPIC mode:[%s] bCentralHeatingEnable:false",p);
       }else{
-        ESP_LOGD(LOG_TAG,"MODE_SET_TOPIC publish error");
+        LOGD(LOG_TAG,"MODE_SET_TOPIC publish error");
       }
     }else
-      ESP_LOGE(LOG_TAG,"MODE_SET_TOPIC mode:[%s] unknown",p);
+      LOGE(LOG_TAG,"MODE_SET_TOPIC mode:[%s] unknown",p);
   }
 
   // TEMP_DWH
@@ -959,9 +963,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (dwhTarget1>0) {
       dwhTarget = dwhTarget1;
       bParamChanged=true;
-      ESP_LOGD(LOG_TAG,"TEMP_DHW_STATE_TOPIC temperature:[%f]",dwhTarget1);
+      LOGD(LOG_TAG,"TEMP_DHW_STATE_TOPIC temperature:[%f]",dwhTarget1);
     }else{
-      ESP_LOGE(LOG_TAG,"TEMP_DHW_STATE_TOPIC value <= 0 error");
+      LOGE(LOG_TAG,"TEMP_DHW_STATE_TOPIC value <= 0 error");
     }
   }
   else if (!strcmp(topic, TEMP_DHW_SET_TOPIC)) {
@@ -970,12 +974,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
       pubResult=publishToTopicFloat(dwhTarget1,TEMP_DHW_STATE_TOPIC,"temp");
       if (pubResult==true){
         dwhTarget = dwhTarget1;
-        ESP_LOGD(LOG_TAG,"TEMP_DHW_SET_TOPIC temperature:[%f]",dwhTarget1);
+        LOGD(LOG_TAG,"TEMP_DHW_SET_TOPIC temperature:[%f]",dwhTarget1);
       }else{
-        ESP_LOGE(LOG_TAG,"TEMP_DHW_SET_TOPIC publish error");
+        LOGE(LOG_TAG,"TEMP_DHW_SET_TOPIC publish error");
       }
     }else{
-      ESP_LOGE(LOG_TAG,"TEMP_DHW_SET_TOPIC value convert error");
+      LOGE(LOG_TAG,"TEMP_DHW_SET_TOPIC value convert error");
     }
   }
     // OT_LOG
@@ -983,13 +987,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (!strcmp(p, "1")){
       bOtLogEnable=true;
       bParamChanged=true;
-      ESP_LOGI(LOG_TAG,"ENABLE_OT_LOG_STATE_TOPIC bOtLogEnable:[true]");
+      LOGI(LOG_TAG,"ENABLE_OT_LOG_STATE_TOPIC bOtLogEnable:[true]");
     }else if (!strcmp(p, "0")){
       bOtLogEnable=false;
       bParamChanged=true;
-      ESP_LOGI(LOG_TAG,"ENABLE_OT_LOG_STATE_TOPIC bOtLogEnable:[false]");
+      LOGI(LOG_TAG,"ENABLE_OT_LOG_STATE_TOPIC bOtLogEnable:[false]");
     }else{
-      ESP_LOGE(LOG_TAG,"ENABLE_OT_LOG_STATE_TOPIC unknow param value error");
+      LOGE(LOG_TAG,"ENABLE_OT_LOG_STATE_TOPIC unknow param value error");
     }
   }
 // OTLOG
@@ -999,21 +1003,21 @@ void callback(char* topic, byte* payload, unsigned int length) {
       if (pubResult==true){
         bOtLogEnable=true;//
         bParamChanged=true;
-        ESP_LOGI(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC bOtLogEnable:[true]");
+        LOGI(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC bOtLogEnable:[true]");
       }else{
-        ESP_LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC publish error");
+        LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC publish error");
       }
     }else if (!strcmp(p, "0")){
        pubResult=client.publish(ENABLE_OT_LOG_STATE_TOPIC, p, length,true);
       if (pubResult==true){
         bOtLogEnable=false;
         bParamChanged=true;
-        ESP_LOGI(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC bOtLogEnable:[false]");
+        LOGI(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC bOtLogEnable:[false]");
       }else{
-        ESP_LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC publish error");
+        LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC publish error");
       }
     }else{
-      ESP_LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC unknow param value error");
+      LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC unknow param value error");
     }
   }
   
@@ -1022,13 +1026,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (!strcmp(p, "1")){
       bCentralHeatingEnable=true;
       bParamChanged=true;
-      ESP_LOGI(LOG_TAG,"ENABLE_CHEATING_STATE_TOPIC bCentralHeatingEnable:[true]");
+      LOGI(LOG_TAG,"ENABLE_CHEATING_STATE_TOPIC bCentralHeatingEnable:[true]");
     }else if (!strcmp(p, "0")){
       bCentralHeatingEnable=false;
       bParamChanged=true;
-      ESP_LOGI(LOG_TAG,"ENABLE_CHEATING_STATE_TOPIC bCentralHeatingEnable:[false]");
+      LOGI(LOG_TAG,"ENABLE_CHEATING_STATE_TOPIC bCentralHeatingEnable:[false]");
     }else{
-      ESP_LOGE(LOG_TAG,"ENABLE_CHEATING_STATE_TOPIC unknow param value error");
+      LOGE(LOG_TAG,"ENABLE_CHEATING_STATE_TOPIC unknow param value error");
     }
   }
   else if (!strcmp(topic, ENABLE_CHEATING_SET_TOPIC)) {
@@ -1037,21 +1041,21 @@ void callback(char* topic, byte* payload, unsigned int length) {
       if (pubResult==true){
         bCentralHeatingEnable=true;
         bParamChanged=true;
-        ESP_LOGI(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC bCentralHeatingEnable:[true]");
+        LOGI(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC bCentralHeatingEnable:[true]");
       }else{
-        ESP_LOGE(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC publish error");
+        LOGE(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC publish error");
       }
     }else if (!strcmp(p, "0")){
        pubResult=client.publish(ENABLE_CHEATING_STATE_TOPIC, p, length,true);
       if (pubResult==true){
         bCentralHeatingEnable=false;
         bParamChanged=true;
-        ESP_LOGI(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC bCentralHeatingEnable:[false]");
+        LOGI(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC bCentralHeatingEnable:[false]");
       }else{
-        ESP_LOGE(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC publish error");
+        LOGE(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC publish error");
       }
     }else{
-      ESP_LOGE(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC unknow param value error");
+      LOGE(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC unknow param value error");
     }
   }
 
@@ -1060,13 +1064,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (!strcmp(p, "1")){
       bWaterHeatingEnable=true;
       bParamChanged=true;
-      ESP_LOGI(LOG_TAG,"ENABLE_WHEATING_STATE_TOPIC bWaterHeatingEnable:[true]");
+      LOGI(LOG_TAG,"ENABLE_WHEATING_STATE_TOPIC bWaterHeatingEnable:[true]");
     }else if (!strcmp(p, "0")){
       bWaterHeatingEnable=false;
       bParamChanged=true;
-      ESP_LOGI(LOG_TAG,"ENABLE_WHEATING_STATE_TOPIC bWaterHeatingEnable:[false]");
+      LOGI(LOG_TAG,"ENABLE_WHEATING_STATE_TOPIC bWaterHeatingEnable:[false]");
     }else{
-      ESP_LOGE(LOG_TAG,"ENABLE_WHEATING_STATE_TOPIC unknow param value error");
+      LOGE(LOG_TAG,"ENABLE_WHEATING_STATE_TOPIC unknow param value error");
     }
   }
   else if (!strcmp(topic, ENABLE_WHEATING_SET_TOPIC)) {
@@ -1074,20 +1078,20 @@ void callback(char* topic, byte* payload, unsigned int length) {
       pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC, p, length,true);
       if (pubResult==true){
         bWaterHeatingEnable=true;
-        ESP_LOGI(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC bWaterHeatingEnable:[true]");
+        LOGI(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC bWaterHeatingEnable:[true]");
       }else{
-        ESP_LOGE(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC publish error");
+        LOGE(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC publish error");
       }
     }else if (!strcmp(p, "0")){
       pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC, p, length,true);
       if (pubResult==true){
         bWaterHeatingEnable=false;
-        ESP_LOGI(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC bWaterHeatingEnable:[false]");
+        LOGI(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC bWaterHeatingEnable:[false]");
       }else{
-         ESP_LOGE(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC publish error");
+         LOGE(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC publish error");
       }
     }else{
-      ESP_LOGE(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC unknow param value error");
+      LOGE(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC unknow param value error");
     }
   }
 
@@ -1097,9 +1101,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (MaxModLevel1>0) {
       MaxModLevel = MaxModLevel1;
       bParamChanged=true;
-      ESP_LOGI(LOG_TAG,"MAX_MODULATION_LEVEL_STATE_TOPIC MaxModLevel:[%d]",MaxModLevel1);
+      LOGI(LOG_TAG,"MAX_MODULATION_LEVEL_STATE_TOPIC MaxModLevel:[%d]",MaxModLevel1);
     }else{
-      ESP_LOGE(LOG_TAG,"MAX_MODULATION_LEVEL_STATE_TOPIC value <= 0 error");
+      LOGE(LOG_TAG,"MAX_MODULATION_LEVEL_STATE_TOPIC value <= 0 error");
     }
 
   }
@@ -1109,10 +1113,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
       pubResult=publishToTopicFloat(MaxModLevel1,MAX_MODULATION_LEVEL_STATE_TOPIC,"level",true);
       if (pubResult==true){
         MaxModLevel = MaxModLevel1;
-        ESP_LOGI(LOG_TAG,"MAX_MODULATION_LEVEL_SET_TOPIC MaxModLevel:[%d]",MaxModLevel);
+        LOGI(LOG_TAG,"MAX_MODULATION_LEVEL_SET_TOPIC MaxModLevel:[%d]",MaxModLevel);
       }
     }else{
-      ESP_LOGE(LOG_TAG,"MAX_MODULATION_LEVEL_SET_TOPIC value convert error");
+      LOGE(LOG_TAG,"MAX_MODULATION_LEVEL_SET_TOPIC value convert error");
     }
 
   }
@@ -1122,9 +1126,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     int oplo1=getPayloadFloatValue("temp",p);
     if (oplo1>0 && oplo1<ophi) {
       oplo = oplo1;
-      ESP_LOGI(LOG_TAG,"LBAND_TEMP_STATE_TOPIC low band:[%d]",oplo1);
+      LOGI(LOG_TAG,"LBAND_TEMP_STATE_TOPIC low band:[%d]",oplo1);
     }else{
-      ESP_LOGE(LOG_TAG,"LBAND_TEMP_STATE_TOPIC value <= 0 or >ophi error");
+      LOGE(LOG_TAG,"LBAND_TEMP_STATE_TOPIC value <= 0 or >ophi error");
     }
   }
   else if (!strcmp(topic, LBAND_TEMP_SET_TOPIC)) {
@@ -1132,13 +1136,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (!isnan(oplo1) && isValidNumber(p) && oplo1<ophi) {
       pubResult=publishToTopicFloat(oplo1,LBAND_TEMP_STATE_TOPIC,"temp",true);
       if (pubResult==true ){
-        ESP_LOGI(LOG_TAG,"LBAND_TEMP_SET_TOPIC low band:[%d]",oplo1);
+        LOGI(LOG_TAG,"LBAND_TEMP_SET_TOPIC low band:[%d]",oplo1);
         oplo = oplo1;
       }
      
       
     }else{
-      ESP_LOGE(LOG_TAG,"LBAND_TEMP_SET_TOPIC value convert error");
+      LOGE(LOG_TAG,"LBAND_TEMP_SET_TOPIC value convert error");
     }
 
   }
@@ -1148,9 +1152,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     int ophi1=getPayloadFloatValue("temp",p);
     if (ophi1>0 && ophi1>oplo) {
       ophi = ophi1;
-      ESP_LOGI(LOG_TAG,"HBAND_TEMP_STATE_TOPIC high band:[%d]",ophi1);
+      LOGI(LOG_TAG,"HBAND_TEMP_STATE_TOPIC high band:[%d]",ophi1);
     }else{
-      ESP_LOGE(LOG_TAG,"HBAND_TEMP_STATE_TOPIC value <= 0 or <oplo error");
+      LOGE(LOG_TAG,"HBAND_TEMP_STATE_TOPIC value <= 0 or <oplo error");
     }
   }
   else if (!strcmp(topic, HBAND_TEMP_SET_TOPIC)) {
@@ -1159,10 +1163,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
       pubResult=publishToTopicFloat(ophi1,HBAND_TEMP_STATE_TOPIC,"temp",true);
       if (pubResult==true){
         ophi = ophi1;
-        ESP_LOGI(LOG_TAG,"HBAND_TEMP_SET_TOPIC high band:[%d]",ophi);
+        LOGI(LOG_TAG,"HBAND_TEMP_SET_TOPIC high band:[%d]",ophi);
       }
     }else{
-      ESP_LOGE(LOG_TAG,"HBAND_TEMP_SET_TOPIC high band error");
+      LOGE(LOG_TAG,"HBAND_TEMP_SET_TOPIC high band error");
     }
   }
 
@@ -1171,9 +1175,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     float nosp_override1=getPayloadFloatValue("temp",p);
     if (nosp_override1>0) {
       nosp_override = nosp_override1;
-      ESP_LOGI(LOG_TAG,"NOSP_OVERRIDE_TEMP_STATE_TOPIC no sp temp overrice:[%f]",nosp_override);
+      LOGI(LOG_TAG,"NOSP_OVERRIDE_TEMP_STATE_TOPIC no sp temp overrice:[%f]",nosp_override);
     }else{
-      ESP_LOGE(LOG_TAG,"NOSP_OVERRIDE_TEMP_STATE_TOPIC value <= 0 error");
+      LOGE(LOG_TAG,"NOSP_OVERRIDE_TEMP_STATE_TOPIC value <= 0 error");
     }
   }
   else if (!strcmp(topic, NOSP_OVERRIDE_TEMP_SET_TOPIC)) {
@@ -1181,9 +1185,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (!isnan(nosp_override1) && isValidNumber(p)) {
       publishToTopicFloat(nosp_override1,NOSP_OVERRIDE_TEMP_STATE_TOPIC,"temp");
       nosp_override = nosp_override1;
-      ESP_LOGI(LOG_TAG,"NOSP_OVERRIDE_TEMP_SET_TOPIC no sp temp overrice:[%f]",nosp_override);
+      LOGI(LOG_TAG,"NOSP_OVERRIDE_TEMP_SET_TOPIC no sp temp overrice:[%f]",nosp_override);
     }else{
-      ESP_LOGE(LOG_TAG,"NOSP_OVERRIDE_TEMP_SET_TOPIC value convert error");
+      LOGE(LOG_TAG,"NOSP_OVERRIDE_TEMP_SET_TOPIC value convert error");
     }
   }else if (!strcmp(topic,INIT_DEFAULT_VALUES_TOPIC)){
     publishInitializationValues();
@@ -1215,16 +1219,16 @@ char * getPayloadCharValue(const char * key, char * payload){
   DeserializationError err =deserializeJson(doc, payload);
    
   if (err) {
-    ESP_LOGI(LOG_TAG,"deserializeJson() failed: %s",err.c_str());
+    LOGI(LOG_TAG,"deserializeJson() failed: %s",err.c_str());
   }
 
-  ESP_LOGI(LOG_TAG,"key:[%s]",key);
+  LOGI(LOG_TAG,"key:[%s]",key);
   if (doc.containsKey(key)){
     const char * tt=doc[key];
     int i=strlen(tt)+1;
     char * res=(char *)malloc(i*sizeof(char));
 
-    ESP_LOGI(LOG_TAG,"getPayloadCharValue:[%s]",tt);
+    LOGI(LOG_TAG,"getPayloadCharValue:[%s]",tt);
     
     sprintf(res,"%s",tt);
     return res;       // <------ TODO PROPER FREE
@@ -1310,9 +1314,9 @@ void publishAvailable(){
 
   char mqttPayload[256];
   bool published;
-  size_t n=0;
-
-  sprintf(mqttPayload,"{\"status\",\"ONLINE\"}");
+ 
+  sprintf(mqttPayload,"ONLINE");
+  size_t n=strlen(mqttPayload);
   published=client.publish(AVAILABILITY_TOPIC,mqttPayload , n,true);
  
 }

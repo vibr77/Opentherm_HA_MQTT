@@ -5,3 +5,5 @@
 .vscode/ipch
 pwd.h
 .DS_Store
+upload_params.ini
+
