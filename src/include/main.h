@@ -16,7 +16,7 @@ typedef enum{
 
 void toggleLed(LED_NOTIF led);
 void switchLed(LED_NOTIF led, bool newState);
- 
+void printLocalTime();
 void connectWIFI();
 void connectMQTT();
 void IRAM_ATTR handleInterrupt();
@@ -24,6 +24,7 @@ void getBootReasonMessage(char *buffer, int bufferlength);
 void web_otcmd(AsyncWebServerRequest * request);
 void updateData();
 void updateDataDiag();
+float pid(float sp, float pv,float pv_ext, float pv_last, float& ierr, float dt);
 
 void processResponse(unsigned long response, OpenThermResponseStatus status) ;
 unsigned int buildRequest(byte req_idx);
@@ -31,19 +32,35 @@ void handleOpenTherm();
 
 bool led_b=false,led_g=false,led_r=false;
 
-
-
 float oplo=LOW_BAND_TEMP,
       ophi=HIGH_BAND_TEMP,
-      sp = 18,                  //set point
-      t = 15,                   //current temperature
+      sp = 18,					//set point 
+	  sp_last=18,               //set point previous setpoint
+      t = 18,                   //current temperature
       t_last = 0,               //prior temperature
-      ierr = 25,                //integral error
+	  t_ext=0,					//external temperature 
+      ierr = 0,                 //integral error
+
+	  P=0,						//Proportional contribution
+	  I=0,						//Integral contribution
+	  D=0,						//Derivative contribution
+	  E=0,						//External contribution
+
       dt = 0,                   //time between measurements
-      op = 0;                   //PID controller output
+      op = 0,                   //PID controller output
+	  ierr_df=0.05,				// ierr decreasing factor
+	  
+	  Kp=45,					// PID Constant
+	  Ki=0.05,					// PID Constant
+	  Kd=0,						// PID Constant
+	  Ke=0,						// Constant for External adjustement
+
+	  pid_interval=30;					// External temperature sensor
+
 
 uint8_t boiler_status = 0;
 
+bool bExtTempEnable=false;
 bool bCentralHeatingEnable=false;
 bool bWaterHeatingEnable=false;
 bool bHeatingMode=false;
@@ -63,6 +80,7 @@ float bParamChanged=false;        // Flag when value need to be pass to the boil
 
 const unsigned long extTempTimeout_ms = 60 * 1000;
 const unsigned long statusUpdateInterval_ms = 1000;
+const unsigned long writeUpdateInterval_ms = 30*1000;
 const unsigned long UpdateMqttInterval_ms = 5000;
 
 const unsigned long spOverrideTimeout_ms = 30 * 1000;
@@ -70,7 +88,9 @@ const unsigned long pOverrideTimeout_ms = 30 * 1000;
 const unsigned long UpdateDiagInterval_ms = 60 * 1000;
 
 unsigned long ts = 0, new_ts = 0; //timestamp
-unsigned long lastUpdate = 0;
+unsigned long lastUpdate = 0;			// Used fort the OT Read request
+unsigned long lastWriteUpdate = 0;		// Used for the OT Write request
+
 unsigned long lastUpdateDiag = 0;
 unsigned long lastMqttUpdate=0;
 unsigned long lastTempSet = 0;

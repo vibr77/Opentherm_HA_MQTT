@@ -55,6 +55,9 @@ Todo:
 #include "include/mqtt_com.h"
 
 #include "Adafruit_HTU31D.h"
+#include "time.h"
+
+#include "include/LnkList.h"
 
 Adafruit_HTU31D htu = Adafruit_HTU31D();
 
@@ -65,6 +68,8 @@ WiFiClient espClient;
 PubSubClient client((const char*)MQTT_SERVER, MQTT_PORT,  espClient);
 AsyncWebServer server(80);
 sensors_event_t humidity, temp; 
+
+LnkList<dataItem> listData;
 
 int status = WL_IDLE_STATUS;
 
@@ -89,54 +94,101 @@ typedef enum {
 
 uint8_t requests[] = {
   OpenThermMessageID::Status, // READ
-  OpenThermMessageID::TSet, // WRITE
+  OpenThermMessageID::Tret, // READ
   OpenThermMessageID::Tboiler, // READ
   OpenThermMessageID::Tdhw, // READ
-  OpenThermMessageID::TdhwSet, // WRITE
   OpenThermMessageID::RelModLevel, // READ
+  OpenThermMessageID::TdhwSet, // WRITE
   OpenThermMessageID::MaxRelModLevelSetting, // WRITE
-  OpenThermMessageID::Tret // WRITE
+  OpenThermMessageID::TSet, // WRITE
 };
 
-const byte requests_count = sizeof(requests) / sizeof(uint8_t);
+
+byte requests_count = sizeof(requests) / sizeof(uint8_t);
 byte req_idx = 0;
 
 
-float pid(float sp, float pv, float pv_last, float& ierr, float dt) {
-  float KP = 10;
-  float KI = 0.02;
+float pid(float sp, float pv,float pv_ext, float pv_last, float& ierr, float dt) {
+  
+  //float KP = 30;
+  //float KI = 0.05;
+  //float KD= 0;
 
   float op=0;
-/*
-  if (bHeatingMode==false || bCentralHeatingEnable==false){
-    op=oplo;
-    ESP_LOGI("MAIN","PID op:[%f]=oplo:[%f] bHeatingMode==false || bCentralHeatingEnable==false ",op,oplo);
-  
-    return op;
-  }
-*/ 
 
-  // calculate the error
-  float error = sp - pv;
-  // calculate the integral error
-  ierr = ierr + KI * error * dt;
+  // sp setpoint: target temperature
+  // pv present value: current temperature
+  // pv_last = previous temperature
+
+  float error = sp - pv;                     // calculate the error
+  float error_ext= sp- pv_ext;
+
+  if (error==0 && ierr>=0){
+    ierr = ierr - Ki * 0.5 * dt; 
+  }else{ 
+    ierr = ierr + Ki * error * dt;            // calculate the integral error
+  }
+
   // calculate the measurement derivative
-  //float dpv = (pv - pv_last) / dt;
+  
+  float dpv = (pv - pv_last) / dt;
+  
   // calculate the PID output
-  float P = KP * error; //proportional contribution
-  float I = ierr; //integral contribution
-  op = P + I;
+
+   P = Kp * error; //proportional contribution
+   I = ierr; //integral contribution
+   D = dpv;
+   E = Ke * error_ext;
+
+   op = P + I+ D + E;
+
+  if (bExtTempEnable==true)
+    op += E;
+ 
   // implement anti-reset windup
   if ((op < oplo) || (op > ophi)) {
-    I = I - KI * error * dt;
+    I = I - Ki * error * dt;
     // clip output
     op = max(oplo, min(ophi, op));
   }
   ierr = I;
 
-  LOGI("MAIN","PID op:[%f] pv:[%f] dt:[%f] sp:[%f] P:[%f] I:[%f]",op,pv,dt,sp,P,I);
+  //
+  // build data set for investigation
+  //
+
+  dataItem di;
+
+  di.op=op;
+  di.P=P;
+  di.I=I;
+  di.E=E;  
+  di.pv=pv;
+  di.pv_ext=pv_ext;
+  di.sp=sp;
+  di.dt=dt;
+  
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    LOGE("MAIN","Failed to obtain time");
+    sprintf(di.ts,"xx:xx:xx");
+  }else{
+    sprintf(di.ts,"%02d:%02d:%02d",timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
+  }
+
+  listData.add(di);
+
+  if (listData.size() > MAX_DATALIST_ITEM){
+    listData.remove(0);
+  }
+
+  LOGI("MAIN","PID op:[%f] pv:[%f] dt:[%f] sp:[%f] P:[%f] I:[%f] E:",op,pv,dt,sp,P,I,E);
   return op;
 }
+
+
+
+
 
 String MacAddr;
 
@@ -209,11 +261,13 @@ void connectMQTT(){
       
       client.subscribe(ENABLE_CHEATING_SET_TOPIC);
       client.subscribe(ENABLE_CHEATING_STATE_TOPIC);
+
       client.subscribe(ENABLE_WHEATING_SET_TOPIC);
       client.subscribe(ENABLE_WHEATING_STATE_TOPIC);
 
       client.subscribe(ENABLE_OT_LOG_STATE_TOPIC);
       client.subscribe(ENABLE_OT_LOG_SET_TOPIC);
+      client.subscribe(ENABLE_EXTTEMP_STATE_TOPIC);
 
       client.subscribe(MAX_MODULATION_LEVEL_STATE_TOPIC);
       client.subscribe(MAX_MODULATION_LEVEL_SET_TOPIC);
@@ -239,6 +293,24 @@ void connectMQTT(){
       client.subscribe(SETPOINT_OVERRIDE_SET_TOPIC);
       
       client.subscribe(INIT_DEFAULT_VALUES_TOPIC);
+
+      client.subscribe(PID_KP_STATE_TOPIC);
+      client.subscribe(PID_KP_SET_TOPIC);
+
+      client.subscribe(PID_KI_STATE_TOPIC);
+      client.subscribe(PID_KI_SET_TOPIC);
+
+      client.subscribe(PID_KD_STATE_TOPIC);
+      client.subscribe(PID_KD_SET_TOPIC);
+
+      client.subscribe(PID_KE_STATE_TOPIC);
+      client.subscribe(PID_KE_SET_TOPIC);
+
+      client.subscribe(PID_INTERVAL_STATE_TOPIC);
+      client.subscribe(PID_INTERVAL_SET_TOPIC);
+
+      client.subscribe(CURRENT_EXTEMP_SET_TOPIC);
+      client.subscribe(CURRENT_EXTEMP_STATE_TOPIC);
 
       LOGI("MAIN","Connected to MQTT");
      
@@ -377,7 +449,7 @@ void getBootReasonMessage(char *buffer, int bufferlength){
 
 void web_otcmd(AsyncWebServerRequest * request){
 
-  int paramsNr = request->params();
+ /* int paramsNr = request->params();
   Serial.println(paramsNr);
  
   for(int i=0;i<paramsNr;i++){
@@ -389,9 +461,31 @@ void web_otcmd(AsyncWebServerRequest * request){
     Serial.println(p->value());
     Serial.println("------");
   }
- 
-  request->send(200, "text/plain", "message received");
 
+  struct dataItem {
+  float sp;
+  float pv;
+  float op;
+  float I;
+  float P;
+  float dt;
+  char ts[9];
+}
+ */
+  String response;
+  response="<pre>\n";
+  response="sp;pv;op;I;P;dt;ts\n";
+  int theSize = listData.size();
+  char tmp[256];
+  for (int i=0;i<theSize;i++){
+    dataItem di=listData.get(i);
+    sprintf(tmp,"%s;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;\n",di.ts,di.sp,di.pv,di.op,di.I,di.P,di.dt);
+    response+=tmp;
+  }
+
+  request->send(200, "text/plain", response);
+
+  /*
   AsyncWebParameter* p = request->getParam(1);
   int ii=p->value().toInt()*256;
   
@@ -401,6 +495,8 @@ void web_otcmd(AsyncWebServerRequest * request){
   
   Serial.println(resp);
   //logOTRequest(resp);
+  */
+
 
 }
 
@@ -475,12 +571,21 @@ void toggleLed(LED_NOTIF led){
   }
 }
 
+void printLocalTime(){
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    LOGE("MAIN","Failed to obtain time");
+    return;
+  }
+  LOGI("MAIN","startup Localtime: %02d:%02d",timeinfo.tm_hour,timeinfo.tm_min)
+ //Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+}
+
 void setup(){
 
   Serial.begin(115200);
   delay(1000);
 
-  
   pinMode(GREEN_LED_PIN,OUTPUT);
   pinMode(BLUE_LED_PIN,OUTPUT);
   pinMode(RED_LED_PIN,OUTPUT);
@@ -490,8 +595,7 @@ void setup(){
   
   if (!htu.begin(0x40)) {
     ESP_LOGE("MAIN","HTU31D sensor could not be found on I2C addr 0x40"); // DO NOT CHANGED
-    
-    while (1);
+    while (1);                              // <-- TODO put a timeout on this 
   }
 
   switchLed(LED_GREEN,true);
@@ -509,6 +613,9 @@ void setup(){
 
   Debug.begin(MQTT_DEVICENAME);      // start Remote debugger
   
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+
   switchLed(LED_RED,false);
 
   Serial.setDebugOutput(true);
@@ -530,7 +637,13 @@ void setup(){
   MQTT_DiscoveryMsg_Sensor_BoilerReturnTemperature();
   MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature();
   MQTT_DiscoveryMsg_Sensor_dwhTemperature();
-  MQTT_DiscoveryMsg_Sensor_IntegralError();
+  
+  MQTT_DiscoveryMsg_Sensor_ProportionalContribution();
+  MQTT_DiscoveryMsg_Sensor_IntegralContribution();
+  MQTT_DiscoveryMsg_Sensor_DerivativeContribution();
+  MQTT_DiscoveryMsg_Sensor_ExternalContribution();
+
+  MQTT_DiscoveryMsg_Sensor_ExternalTemperature();
 
   MQTT_DiscoveryMsg_Sensor_InternalTemperature();
   MQTT_DiscoveryMsg_Sensor_InternalHumidity();
@@ -545,9 +658,11 @@ void setup(){
 
   MQTT_DiscoveryMsg_Sensor_CentralHeating();
   MQTT_DiscoveryMsg_Sensor_WaterHeating();
+  MQTT_DiscoveryMsg_Switch_EnableExtTemp();
   MQTT_DiscoveryMsg_Switch_EnableCentralHeating();
   MQTT_DiscoveryMsg_Switch_EnableWaterHeating();
   MQTT_DiscoveryMsg_Switch_EnableLog();
+
   MQTT_DiscoveryMsg_Text_Log();
 
   MQTT_DiscoveryMsg_Text_WIFI_SSID();
@@ -556,6 +671,13 @@ void setup(){
   MQTT_DiscoveryMsg_Text_MacAddr();
   MQTT_DiscoveryMsg_Text_PingAlive();
   MQTT_DiscoveryMsg_Button_InitDefValues();
+
+  MQTT_DiscoveryMsg_Number_PID_Kp();
+  MQTT_DiscoveryMsg_Number_PID_Ki();
+  MQTT_DiscoveryMsg_Number_PID_Kd();
+  MQTT_DiscoveryMsg_Number_PID_Ke();
+
+  MQTT_DiscoveryMsg_Number_PID_Interval();
 
   publishAvailable();
 
@@ -646,8 +768,12 @@ void updateData(){
   
   publishToTopicFloat(op,TEMP_BOILER_TARGET_TEMP_STATE_TOPIC,"temp",false);
   publishToTopicFloat(boilerTemp,TEMP_BOILER_STATE_TOPIC,"temp",false);
-  publishToTopicFloat(ierr,INTEGRAL_ERROR_STATE_TOPIC,"value",false);
   
+  publishToTopicFloat(P,PROPORTIONAL_ERROR_STATE_TOPIC,"value",false);
+  publishToTopicFloat(I,INTEGRAL_ERROR_STATE_TOPIC,"value",false);
+  publishToTopicFloat(D,DERIVATIVE_ERROR_STATE_TOPIC,"value",false);
+  publishToTopicFloat(E,EXTERNAL_ERROR_STATE_TOPIC,"value",false);
+
   publishToTopicStr((char*)(isFlameOn ? "ON" : "OFF"),FLAME_STATUS_STATE_TOPIC,"value",false); // TODO Add condition on central heating
   publishToTopicFloat(flameLevel,FLAME_LEVEL_STATE_TOPIC,"value",false);
   
@@ -766,31 +892,43 @@ unsigned int buildRequest(byte req_idx){
 
 void handleOpenTherm() {
   //if (ot.isReady()) { // <------------ to reactivate after test
+    // We do READ Request rotating every second
+    // We do Write Request every min or on change
+
     unsigned long now = millis();
-    if (now - lastUpdate > statusUpdateInterval_ms) { // 1 Request every 1 sec
+
+    if (now - lastUpdate > statusUpdateInterval_ms && (sp!=sp_last || t!=t_last || (now-lastWriteUpdate> (pid_interval*1000)))){
+        lastWriteUpdate=now;
+        new_ts = millis();
+        
+        dt = (new_ts - ts) / 1000.0;
+        ts = new_ts;
+        op = pid(sp, t,t_ext, t_last, ierr, dt);
+        LOGI("MAIN","start write request to boiler op:%.2f sp:%.2f sp_last:%.2f t:%2f t_last:%.2f",op,sp,sp_last,t,t_last);
+        
+        t_last=t;
+        sp_last=sp;
+
+        //req_idx=5; // <-- It starts with write request (5/8 requests)
+        //requests_count=8; 
+    }
+
+    if (now - lastUpdate > statusUpdateInterval_ms) {               // 1 Request every 1 sec
       lastUpdate = now;
-      new_ts = millis();
-      dt = (new_ts - ts) / 1000.0;
-      ts = new_ts;
-      op = pid(sp, t, t_last, ierr, dt);
-      t_last=t;
-      /* 
-      if (now - lastPSet <= spOverrideTimeout_ms) {
-        op = nosp_override;
-      }
-      */
+    
       unsigned int request = buildRequest(req_idx);                 // Rotating the Request
       ot.sendRequestAync(request);
-      LOGI("MAIN","Thermostat Request:[0x%lx]",request);
+      LOGI("MAIN","Thermostat req_idx:[%d] Request:[0x%lx]",req_idx,request);
       if (bOtLogEnable==true){
         char msg[32];
         snprintf(msg,32,"Req:0x%lx",request);
         publishToTopicStr(msg,OT_LOG_STATE_TOPIC,"text",false); 
       }
+
       req_idx++;
-    
-      if (req_idx >= requests_count) {
+      if (req_idx >= requests_count) {                              // requests_count = sizeof(requests) / sizeof(uint8_t);
         req_idx = 0;
+        //requests_count=5;
       }
     }
     ot.process(); // Check for Reponse and process
@@ -801,6 +939,7 @@ void loop(){
 
 // WARNING DO NOT PUT DELAY OR IT WILL NOT ENABLE MQTT TO CATCH SUBSCRIBE MESSAGE
 // PLEASE MAKE SURE MQTT CLIENT ID IS UNIQUE OTHERWISE YOU WILL GET DISCONNECTION
+
   ArduinoOTA.handle();
   toggleLed(LED_BLUE);
   
@@ -829,6 +968,5 @@ void loop(){
     lastUpdateDiag = now;
   }
   Debug.handle();
-  //ArduinoOTA.poll();
    
 }

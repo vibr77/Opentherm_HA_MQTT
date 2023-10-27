@@ -2,9 +2,14 @@
 
 void LogMasterParam();
 void connectMQTT();
+
 void MQTT_DiscoveryMsg_Climate();
 void MQTT_DiscoveryMsg_Sensor_Flaming();
 void MQTT_DiscoveryMsg_Sensor_FlameLevel();
+
+
+
+void MQTT_DiscoveryMsg_Sensor_ExternalTemperature();
 
 void MQTT_DiscoveryMsg_Sensor_InternalTemperature();
 void MQTT_DiscoveryMsg_Sensor_InternalHumidity();
@@ -12,7 +17,12 @@ void MQTT_DiscoveryMsg_Sensor_InternalHumidity();
 void MQTT_DiscoveryMsg_Sensor_BoilerTemperature();
 void MQTT_DiscoveryMsg_Sensor_BoilerReturnTemperature();
 void MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature();
-void MQTT_DiscoveryMsg_Sensor_IntegralError();
+
+void MQTT_DiscoveryMsg_Sensor_ProportionalContribution();
+void MQTT_DiscoveryMsg_Sensor_IntegralContribution();
+void MQTT_DiscoveryMsg_Sensor_DerivativeContribution();
+void MQTT_DiscoveryMsg_Sensor_ExternalContribution();
+
 void MQTT_DiscoveryMsg_Sensor_dwhTemperature();
 void MQTT_DiscoveryMsg_Sensor_WaterHeating();
 void MQTT_DiscoveryMsg_Sensor_CentralHeating();
@@ -23,6 +33,13 @@ void MQTT_DiscoveryMsg_Number_HighBandTemperature();
 void MQTT_DiscoveryMsg_Number_NospTempOverride();
 void MQTT_DiscoveryMsg_Number_dwh_temp();
 
+void MQTT_DiscoveryMsg_Number_PID_Interval();
+void MQTT_DiscoveryMsg_Number_PID_Kp();
+void MQTT_DiscoveryMsg_Number_PID_Ki();
+void MQTT_DiscoveryMsg_Number_PID_Kd();
+void MQTT_DiscoveryMsg_Number_PID_Ke();
+
+void MQTT_DiscoveryMsg_Switch_EnableExtTemp();
 void MQTT_DiscoveryMsg_Switch_EnableWaterHeating();
 void MQTT_DiscoveryMsg_Switch_EnableCentralHeating();
 void MQTT_DiscoveryMsg_Switch_EnableLog();

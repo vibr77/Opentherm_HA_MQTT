@@ -11,8 +11,9 @@
 extern PubSubClient client;
 extern RemoteDebug Debug;
 
-extern float oplo,ophi,sp,t,ierr,op;
-extern bool bCentralHeating, bWaterHeatingEnable,bCentralHeatingEnable,bHeatingMode,bOtLogEnable;
+extern float oplo,ophi,sp,t,t_ext,ierr,op,Ki,Kd,Kp,Ke;
+extern int pid_interval;
+extern bool bCentralHeating, bWaterHeatingEnable,bCentralHeatingEnable,bHeatingMode,bOtLogEnable,bExtTempEnable;
 extern bool bWaterHeating;
 extern float dwhTarget;
 extern float dwhTemp;
@@ -83,6 +84,10 @@ boolean sendMqttMsg(const char* topic,DynamicJsonDocument doc){
     return published;
 }
 
+//
+// Boiler Thermostat
+//
+
 void MQTT_DiscoveryMsg_Climate(){
   
   DynamicJsonDocument doc(4096);
@@ -125,7 +130,9 @@ void MQTT_DiscoveryMsg_Climate(){
   bool published= sendMqttMsg(DISCOVERY_CLIMATE_TOPIC,doc);
 }
 
-
+//
+// Boiler Flaming sensor True | False
+//
 
 void MQTT_DiscoveryMsg_Sensor_Flaming(){
 
@@ -149,6 +156,10 @@ void MQTT_DiscoveryMsg_Sensor_Flaming(){
 
   bool published= sendMqttMsg(DISCOVERY_FLAME_TOPIC,doc);
 }
+
+//
+// Boiler Flame Level (Mddulation current level) 0-100%
+//
 
 void MQTT_DiscoveryMsg_Sensor_FlameLevel(){
 
@@ -174,6 +185,10 @@ void MQTT_DiscoveryMsg_Sensor_FlameLevel(){
 
 }
 
+//
+// Boiler Central Heating Sensor True | False
+//
+
 void MQTT_DiscoveryMsg_Sensor_CentralHeating(){
 
   DynamicJsonDocument doc(2048);
@@ -195,6 +210,11 @@ void MQTT_DiscoveryMsg_Sensor_CentralHeating(){
 
   bool published= sendMqttMsg(DISCOVERY_CENTRAL_HEATING_TOPIC,doc);
 }
+
+
+//
+// Boiler Domestic Water Heating Sensor True | False
+//
 
 void MQTT_DiscoveryMsg_Sensor_WaterHeating(){
 
@@ -220,11 +240,15 @@ void MQTT_DiscoveryMsg_Sensor_WaterHeating(){
 }
 
 
+//
+// Controller humidity from the Internal sensor (HTU31D)
+//
+
 void MQTT_DiscoveryMsg_Sensor_InternalHumidity(){
 
   DynamicJsonDocument doc(2048);
 
-  doc["name"] = "Internal humidity";
+  doc["name"] = "Controller humidity";
   doc["dev_cla"] = "Humidity";
   doc["unit_of_measurement"] = "%";
   
@@ -244,12 +268,16 @@ void MQTT_DiscoveryMsg_Sensor_InternalHumidity(){
 
 }
 
+//
+// Controller temperature from the Internal sensor (HTU31D)
+//
+
 
 void MQTT_DiscoveryMsg_Sensor_InternalTemperature(){
 
   DynamicJsonDocument doc(2048);
 
-  doc["name"] = "Internal temperature";
+  doc["name"] = "Controller temperature";
   doc["dev_cla"] = "temperature";
   doc["unit_of_measurement"] = "°C";
   
@@ -270,7 +298,9 @@ void MQTT_DiscoveryMsg_Sensor_InternalTemperature(){
 }
 
 
-//#######
+//
+// Boiler Current Water Temperature
+//
 
 void MQTT_DiscoveryMsg_Sensor_BoilerTemperature(){
 
@@ -295,6 +325,38 @@ void MQTT_DiscoveryMsg_Sensor_BoilerTemperature(){
   bool published= sendMqttMsg(DISCOVERY_BOILER_TEMP_TOPIC,doc);
 
 }
+
+//
+// External temperature measure to compute PID E
+//
+
+void MQTT_DiscoveryMsg_Sensor_ExternalTemperature(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "External temperature";
+  doc["dev_cla"] = "temperature";
+  doc["unit_of_measurement"] = "°C";
+  
+  doc["suggested_display_precision"]=2;
+  char ID[64];
+  sprintf(ID,"%s_EXTTEMP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+  doc["qos"]=0;
+  doc["state_topic"]=CURRENT_EXTEMP_STATE_TOPIC;
+  doc["value_template"]="{{ value_json.temp }}";
+  
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_EXTEMP_TOPIC,doc);
+
+}
+
+//
+// Boiler Circuit returned temperature sensor °C
+//
 
 void MQTT_DiscoveryMsg_Sensor_BoilerReturnTemperature(){
 
@@ -321,6 +383,11 @@ void MQTT_DiscoveryMsg_Sensor_BoilerReturnTemperature(){
 
 }
 
+//
+// Boiler Target Water temperature sensor compute by PID+E
+//
+
+
 void MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature(){
 
   DynamicJsonDocument doc(4096);
@@ -342,8 +409,11 @@ void MQTT_DiscoveryMsg_Sensor_BoilerTargetTemperature(){
   
 
   bool published= sendMqttMsg(DISCOVERY_BOILER_TARGET_TEMP_TOPIC,doc);
-
 }
+
+//
+// Current Valve leading the heating in the premise (string)
+//
 
 void MQTT_DiscoveryMsg_Sensor_LeadingDevice(){
   
@@ -367,15 +437,19 @@ void MQTT_DiscoveryMsg_Sensor_LeadingDevice(){
   doc["availability"]=dev["availability"];
 
   bool published= sendMqttMsg(DISCOVERY_LEADING_DEVICE_TOPIC,doc);
-  
 
 }
 
-void MQTT_DiscoveryMsg_Sensor_IntegralError(){
+//
+// Boiler PID I=Intergral Contribution
+//
+
+
+void MQTT_DiscoveryMsg_Sensor_IntegralContribution(){
 
   DynamicJsonDocument doc(2048);
 
-  doc["name"] = "Boiler integral error";
+  doc["name"] = "PID integral contrib.";
   char ID[64];
   sprintf(ID,"%s_IERR",MQTT_DEV_UNIQUE_ID);
   doc["uniq_id"]=ID;
@@ -393,6 +467,91 @@ void MQTT_DiscoveryMsg_Sensor_IntegralError(){
   bool published= sendMqttMsg(DISCOVERY_INTEGRAL_ERROR_TOPIC,doc);
 
 }
+
+//
+// Boiler PID D=Proportional Contribution
+//
+
+void MQTT_DiscoveryMsg_Sensor_ProportionalContribution(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "PID proportional contrib.";
+  char ID[64];
+  sprintf(ID,"%s_PERR",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
+  doc["dev_cla"] = "temperature";
+  doc["qos"]=0;
+  doc["state_topic"]=PROPORTIONAL_ERROR_STATE_TOPIC;
+  doc["unit_of_measurement"] = "°C";
+  doc["value_template"]="{{ value_json.value }}";
+  doc["suggested_display_precision"]=2;
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+  
+  bool published= sendMqttMsg(DISCOVERY_PROPORTIONAL_ERROR_TOPIC,doc);
+
+}
+
+//
+// Boiler PID D=Derivative Contribution
+//
+
+void MQTT_DiscoveryMsg_Sensor_DerivativeContribution(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "PID derivative contrib.";
+  char ID[64];
+  sprintf(ID,"%s_DERR",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
+  doc["dev_cla"] = "temperature";
+  doc["qos"]=0;
+  doc["state_topic"]=INTEGRAL_ERROR_STATE_TOPIC;
+  doc["unit_of_measurement"] = "°C";
+  doc["value_template"]="{{ value_json.value }}";
+  doc["suggested_display_precision"]=2;
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+  
+  bool published= sendMqttMsg(DISCOVERY_DERIVATIVE_ERROR_TOPIC,doc);
+
+}
+
+//
+// Boiler PID E=External Contribution
+//
+
+void MQTT_DiscoveryMsg_Sensor_ExternalContribution(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "PID external contrib.";
+  char ID[64];
+  sprintf(ID,"%s_EERR",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
+  doc["dev_cla"] = "temperature";
+  doc["qos"]=0;
+  doc["state_topic"]=EXTERNAL_ERROR_STATE_TOPIC;
+  doc["unit_of_measurement"] = "°C";
+  doc["value_template"]="{{ value_json.value }}";
+  doc["suggested_display_precision"]=2;
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+  
+  bool published= sendMqttMsg(DISCOVERY_EXTERNAL_ERROR_TOPIC,doc);
+
+}
+
+//
+// Boiler Current Domestic Water Heating temperature sensor 
+//
 
 void MQTT_DiscoveryMsg_Sensor_dwhTemperature(){
 
@@ -417,6 +576,11 @@ void MQTT_DiscoveryMsg_Sensor_dwhTemperature(){
   bool published= sendMqttMsg(DISCOVERY_DWH_TEMP_TOPIC,doc);
 
 }
+
+//
+// Boiler [Config] Domestic Water Heating Max/Target temperature
+//
+
 
 void MQTT_DiscoveryMsg_Number_dwh_temp(){
 
@@ -448,6 +612,177 @@ void MQTT_DiscoveryMsg_Number_dwh_temp(){
 
   bool published= sendMqttMsg(DISCOVERY_TEMP_DHW_TOPIC,doc);
 }
+
+//
+// Boiler [Config] PID Interval compute (sec)
+//
+
+void MQTT_DiscoveryMsg_Number_PID_Interval(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "PID interval";
+  char ID[64];
+  sprintf(ID,"%s_PIDInterval",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+  doc["icon"]="mdi:sine-wave";
+
+  doc["min"]=1;
+  doc["max"]=600;
+  doc["mode"]="box";
+  doc["step"]=1;
+  doc["qos"]=0;
+  doc["retain"]=true;
+  doc["unit_of_measurement"]="s";
+  doc["entity_category"]="config";
+  
+  doc["state_topic"]=PID_INTERVAL_STATE_TOPIC;
+  doc["value_template"]="{{ value_json.value }}";
+  doc["command_topic"]=PID_INTERVAL_SET_TOPIC;
+
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_PID_INTERVAL,doc);
+}
+
+//
+// Boiler [Config] PID Constant Kp
+//
+
+void MQTT_DiscoveryMsg_Number_PID_Kp(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "PID Kp";
+  char ID[64];
+  sprintf(ID,"%s_PIDKP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+  doc["icon"]="mdi:sine-wave";
+
+  doc["min"]=1;
+  doc["max"]=100;
+  doc["mode"]="box";
+  doc["step"]=1;
+  doc["qos"]=0;
+  doc["retain"]=true;
+ 
+  doc["entity_category"]="config";
+  
+  doc["state_topic"]=PID_KP_STATE_TOPIC;
+  doc["value_template"]="{{ value_json.value }}";
+  doc["command_topic"]=PID_KP_SET_TOPIC;
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_PID_KP_TOPIC,doc);
+}
+
+//
+// Boiler [Config] PID Constant Ki
+//
+
+void MQTT_DiscoveryMsg_Number_PID_Ki(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "PID Ki";
+  char ID[64];
+  sprintf(ID,"%s_PIDKI",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+  doc["icon"]="mdi:sine-wave";
+
+  doc["min"]=0;
+  doc["max"]=1;
+  doc["mode"]="box";
+  doc["step"]=0.001;
+  doc["qos"]=0;
+  doc["retain"]=true;
+ 
+  doc["entity_category"]="config";
+  
+  doc["state_topic"]=PID_KI_STATE_TOPIC;
+  doc["value_template"]="{{ value_json.value }}";
+  doc["command_topic"]=PID_KI_SET_TOPIC;
+  
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_PID_KI_TOPIC,doc);
+}
+
+//
+// Boiler [Config] PID Constant Kd
+//
+
+void MQTT_DiscoveryMsg_Number_PID_Kd(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "PID Kd";
+  char ID[64];
+  sprintf(ID,"%s_PIDKD",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+  doc["icon"]="mdi:sine-wave";
+
+  doc["min"]=0;
+  doc["max"]=1;
+  doc["mode"]="box";
+  doc["step"]=0.001;
+  doc["qos"]=0;
+  doc["retain"]=true;
+
+  doc["entity_category"]="config";
+  
+  doc["state_topic"]=PID_KD_STATE_TOPIC;
+  doc["value_template"]="{{ value_json.value }}";
+  doc["command_topic"]=PID_KD_SET_TOPIC;
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_PID_KD_TOPIC,doc);
+}
+
+//
+// Boiler [Config] PID Constant Ke
+//
+
+void MQTT_DiscoveryMsg_Number_PID_Ke(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "PID Ke";
+  char ID[64];
+  sprintf(ID,"%s_PIDKE",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+  doc["icon"]="mdi:sine-wave";
+
+  doc["min"]=0;
+  doc["max"]=1;
+  doc["mode"]="box";
+  doc["step"]=0.001;
+  doc["qos"]=0;
+  doc["retain"]=true;
+  doc["entity_category"]="config";
+  
+  doc["state_topic"]=PID_KE_STATE_TOPIC;
+  doc["value_template"]="{{ value_json.value }}";
+  doc["command_topic"]=PID_KE_SET_TOPIC;
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_PID_KE_TOPIC,doc);
+}
+
+//
+// Boiler [Config] Max Modulation Level % 1-100
+//
+
 void MQTT_DiscoveryMsg_Number_MaxModulationLevel(){
 
   DynamicJsonDocument doc(2048);
@@ -478,6 +813,10 @@ void MQTT_DiscoveryMsg_Number_MaxModulationLevel(){
 
   bool published= sendMqttMsg(DISCOVERY_MAX_MODLVL_TOPIC,doc);
 }
+
+//
+// Boiler [Config] Heating Wateer Temperature low band value (check your boiler manual)
+//
 
 void MQTT_DiscoveryMsg_Number_LowBandTemperature(){
 
@@ -511,6 +850,10 @@ void MQTT_DiscoveryMsg_Number_LowBandTemperature(){
   bool published= sendMqttMsg(DISCOVERY_LBAND_TEMP_TOPIC,doc);
 }
 
+//
+// Boiler [Config] Heating Wateer Temperature high band value (check your boiler manual)
+//
+
 void MQTT_DiscoveryMsg_Number_HighBandTemperature(){
 
   DynamicJsonDocument doc(2048);
@@ -542,6 +885,10 @@ void MQTT_DiscoveryMsg_Number_HighBandTemperature(){
 
   bool published= sendMqttMsg(DISCOVERY_HBAND_TEMP_TOPIC,doc);
 }
+
+//
+// Boiler [Config] not implemented yet
+//
 
 void MQTT_DiscoveryMsg_Number_NospTempOverride(){
 
@@ -575,6 +922,46 @@ void MQTT_DiscoveryMsg_Number_NospTempOverride(){
   bool published= sendMqttMsg(DISCOVERY_NOSP_OVERRIDE_TEMP_TOPIC,doc);
 }
 
+//
+// Boiler [Config] Enable External temperature compensation PID+E TRUE | FALSE
+//
+
+void MQTT_DiscoveryMsg_Switch_EnableExtTemp(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "External temperature";
+  doc["icon"]="mdi:fire";
+  char ID[64];
+  sprintf(ID,"%s_ENABLE_EXTEMP",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+  doc["device_class"]="switch";
+  
+  doc["payload_off"]="0";
+  doc["payload_on"]="1";
+
+  doc["state_off"]="0";
+  doc["state_on"]="1";
+  
+  doc["qos"]=0;
+  doc["retain"]=true;
+  doc["entity_category"]="config";
+  doc["optimistic"]=OPTIMISTIC;
+
+  doc["state_topic"]=ENABLE_EXTTEMP_STATE_TOPIC;
+  doc["command_topic"]=ENABLE_EXTTEMP_SET_TOPIC;
+  
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_ENABLE_EXTTEMP_TOPIC,doc);
+}
+
+//
+// Boiler [Config] Enable Central Heating TRUE|FALSE
+//
+
 void MQTT_DiscoveryMsg_Switch_EnableCentralHeating(){
 
   DynamicJsonDocument doc(2048);
@@ -607,6 +994,9 @@ void MQTT_DiscoveryMsg_Switch_EnableCentralHeating(){
   bool published= sendMqttMsg(DISCOVERY_ENABLE_CHEATING_TOPIC,doc);
 }
 
+//
+// Boiler [Config] Enable DwH Heating TRUE|FALSE
+//
 
 void MQTT_DiscoveryMsg_Switch_EnableWaterHeating(){
 
@@ -642,6 +1032,10 @@ void MQTT_DiscoveryMsg_Switch_EnableWaterHeating(){
   bool published= sendMqttMsg(DISCOVERY_ENABLE_WHEATING_TOPIC,doc);
 }
 
+//
+// Boiler Log Message string sensor
+//
+
 void MQTT_DiscoveryMsg_Text_Log(){
   
   DynamicJsonDocument doc(2048);
@@ -666,6 +1060,10 @@ void MQTT_DiscoveryMsg_Text_Log(){
   bool published= sendMqttMsg(DISCOVERY_OT_LOG_TOPIC,doc);
 
 }
+
+//
+// Boiler [Config] Enable message logging TRUE|FALSE
+//
 
 void MQTT_DiscoveryMsg_Switch_EnableLog(){
 
@@ -862,8 +1260,112 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   LOGD(LOG_TAG,"MQTT Callback topic:[%s] payload:[%s]",topic,p);
 
+  if (!strcmp(topic, CURRENT_EXTEMP_STATE_TOPIC)) {
+    float t_ext=getPayloadFloatValue("temp",p);
+      LOGD(LOG_TAG,"CURRENT_EXTEMP_STATE_TOPIC new value:%f",t_ext);
+  }
+  // PID Management 
+  else if (!strcmp(topic, PID_KP_STATE_TOPIC)) {
+    float Kp1=getPayloadFloatValue("temp",p);
+    if (Kp1>0) {
+      Kp=Kp1;
+      LOGD(LOG_TAG,"PID_KP_STATE_TOPIC new value:%f",Kp1);
+    }else{
+      LOGE(LOG_TAG,"PID_KP_STATE_TOPIC value <= 0 error");
+    }
+  }else if (!strcmp(topic, PID_KP_SET_TOPIC)) {
+    float val = atof(p);
+    if (!isnan(val) && isValidNumber(p)) {
+      pubResult=publishToTopicFloat(val,PID_KP_STATE_TOPIC,"value",true); // Publish the new température;
+      if (pubResult==true){
+        LOGD(LOG_TAG,"PID_KP_SET_TOPIC value:[%f]",val);
+      }else{
+        LOGE(LOG_TAG,"PID_KP_SET_TOPIC publish error");
+      }
+    }
+  }else if (!strcmp(topic, PID_KI_STATE_TOPIC)) {
+    float Ki1=getPayloadFloatValue("temp",p);
+    if (Ki1>0) {
+      Ki=Ki1;
+      LOGD(LOG_TAG,"PID_KI_STATE_TOPIC new value:%f",Ki1);
+    }else{
+      LOGE(LOG_TAG,"PID_KI_STATE_TOPIC value <= 0 error");
+    }
+  }else if (!strcmp(topic, PID_KI_SET_TOPIC)) {
+    float val = atof(p);
+    if (!isnan(val) && isValidNumber(p)) {
+      pubResult=publishToTopicFloat(val,PID_KI_STATE_TOPIC,"value",true); // Publish the new température;
+      if (pubResult==true){
+        LOGD(LOG_TAG,"PID_KI_SET_TOPIC value:[%f]",val);
+      }else{
+        LOGE(LOG_TAG,"PID_KI_SET_TOPIC publish error");
+      }
+    }
+  }
+  else if (!strcmp(topic, PID_KD_STATE_TOPIC)) {
+    float Kd1=getPayloadFloatValue("temp",p);
+    if (Kd1>0) {
+      Kd=Kd1;
+      LOGD(LOG_TAG,"PID_KD_STATE_TOPIC new value:%f",Kd1);
+    }else{
+      LOGE(LOG_TAG,"PID_KD_STATE_TOPIC value <= 0 error");
+    }
+  }else if (!strcmp(topic, PID_KD_SET_TOPIC)) {
+    float val = atof(p);
+    if (!isnan(val) && isValidNumber(p)) {
+      pubResult=publishToTopicFloat(val,PID_KD_STATE_TOPIC,"value",true); // Publish the new température;
+      if (pubResult==true){
+        LOGD(LOG_TAG,"PID_KD_SET_TOPIC value:[%f]",val);
+      }else{
+        LOGE(LOG_TAG,"PID_KD_SET_TOPIC publish error");
+      }
+    }
+  }
+  
+  else if (!strcmp(topic, PID_KE_STATE_TOPIC)) {
+    float Ke1=getPayloadFloatValue("temp",p);
+    if (Ke1>0) {
+      Ke=Ke1;
+      LOGD(LOG_TAG,"PID_KD_STATE_TOPIC new value:%f",Ke1);
+    }else{
+      LOGE(LOG_TAG,"PID_KD_STATE_TOPIC value <= 0 error");
+    }
+  }
+  else if (!strcmp(topic, PID_KE_SET_TOPIC)) {
+    float val = atof(p);
+    if (!isnan(val) && isValidNumber(p)) {
+      pubResult=publishToTopicFloat(val,PID_KE_STATE_TOPIC,"value",true); // Publish the new température;
+      if (pubResult==true){
+        LOGD(LOG_TAG,"PID_KE_SET_TOPIC value:[%f]",val);
+      }else{
+        LOGE(LOG_TAG,"PID_KE_SET_TOPIC publish error");
+      }
+    }
+  }
+  else if (!strcmp(topic, PID_INTERVAL_STATE_TOPIC)) {
+    float pid_interval1=getPayloadFloatValue("value",p);
+    if (pid_interval1>0) {
+      pid_interval=pid_interval1;
+      LOGD(LOG_TAG,"PID_INTERVAL_STATE_TOPIC new value:%f",pid_interval1);
+    }else{
+      LOGE(LOG_TAG,"PID_INTERVAL_STATE_TOPIC value <= 0 error");
+    }
+  }
+  else if (!strcmp(topic, PID_INTERVAL_SET_TOPIC)) {
+    float val=atof(p);
+    if (!isnan(val) && isValidNumber(p)) {
+      pubResult=publishToTopicFloat(val,PID_INTERVAL_STATE_TOPIC,"value",true); // Publish the new température;
+      if (pubResult==true){
+        LOGD(LOG_TAG,"PID_INTERVAL_STATE_TOPIC value:[%f]",val);
+      }else{
+        LOGE(LOG_TAG,"PID_INTERVAL_STATE_TOPIC publish error");
+      }
+    }
+  }
+
+
   // CURRENT TEMPERATURE
-  if (!strcmp(topic, CURRENT_TEMP_STATE_TOPIC)) {
+  else if (!strcmp(topic, CURRENT_TEMP_STATE_TOPIC)) {
     float t1=getPayloadFloatValue("temp",p);
     if (t1>0) {
       t=t1;
@@ -999,7 +1501,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 // OTLOG
   else if (!strcmp(topic, ENABLE_OT_LOG_SET_TOPIC)) {
     if (!strcmp(p, "1")){
-      pubResult=client.publish(ENABLE_OT_LOG_STATE_TOPIC, p, length,true);
+      pubResult=client.publish(ENABLE_OT_LOG_STATE_TOPIC,(const unsigned char *) p, length,true);
       if (pubResult==true){
         bOtLogEnable=true;//
         bParamChanged=true;
@@ -1008,7 +1510,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
         LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC publish error");
       }
     }else if (!strcmp(p, "0")){
-       pubResult=client.publish(ENABLE_OT_LOG_STATE_TOPIC, p, length,true);
+       pubResult=client.publish(ENABLE_OT_LOG_STATE_TOPIC,(const unsigned char *) p, length,true);
       if (pubResult==true){
         bOtLogEnable=false;
         bParamChanged=true;
@@ -1018,6 +1520,45 @@ void callback(char* topic, byte* payload, unsigned int length) {
       }
     }else{
       LOGE(LOG_TAG,"ENABLE_OT_LOG_SET_TOPIC unknow param value error");
+    }
+  }
+
+
+   else if (!strcmp(topic, ENABLE_EXTTEMP_STATE_TOPIC)) {  // <--- TO BE TESTED
+    if (!strcmp(p, "1")){
+      bExtTempEnable=true;
+      bParamChanged=true;
+      LOGI(LOG_TAG,"ENABLE_EXTTEMP_STATE_TOPIC bExtTempEnable:[true]");
+    }else if (!strcmp(p, "0")){
+      bExtTempEnable=false;
+      bParamChanged=true;
+      LOGI(LOG_TAG,"ENABLE_EXTTEMP_STATE_TOPIC bExtTempEnable:[false]");
+    }else{
+      LOGE(LOG_TAG,"ENABLE_EXTTEMP_STATE_TOPIC unknow param value error");
+    }
+  }
+
+  else if (!strcmp(topic, ENABLE_EXTTEMP_SET_TOPIC)) {
+    if (!strcmp(p, "1")){
+      pubResult=client.publish(ENABLE_EXTTEMP_STATE_TOPIC,(const unsigned char *) p, length,true);
+      if (pubResult==true){
+        //bExtTempEnable=true;//
+        //bParamChanged=true;
+        LOGI(LOG_TAG,"ENABLE_EXTTEMP_SET_TOPIC bExtTempEnable:[true]");
+      }else{
+        LOGE(LOG_TAG,"ENABLE_EXTTEMP_SET_TOPIC publish error");
+      }
+    }else if (!strcmp(p, "0")){
+       pubResult=client.publish(ENABLE_EXTTEMP_STATE_TOPIC,(const unsigned char *) p, length,true);
+      if (pubResult==true){
+        //bExtTempEnable=false;
+        //bParamChanged=true;
+        LOGI(LOG_TAG,"ENABLE_EXTTEMP_SET_TOPIC bExtTempEnable:[false]");
+      }else{
+        LOGE(LOG_TAG,"ENABLE_EXTTEMP_SET_TOPIC publish error");
+      }
+    }else{
+      LOGE(LOG_TAG,"ENABLE_EXTTEMP_SET_TOPIC unknow param value error");
     }
   }
   
@@ -1037,7 +1578,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   else if (!strcmp(topic, ENABLE_CHEATING_SET_TOPIC)) {
     if (!strcmp(p, "1")){
-      pubResult=client.publish(ENABLE_CHEATING_STATE_TOPIC, p, length,true);
+      pubResult=client.publish(ENABLE_CHEATING_STATE_TOPIC,(const unsigned char *) p, length,true);
       if (pubResult==true){
         bCentralHeatingEnable=true;
         bParamChanged=true;
@@ -1046,7 +1587,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
         LOGE(LOG_TAG,"ENABLE_CHEATING_SET_TOPIC publish error");
       }
     }else if (!strcmp(p, "0")){
-       pubResult=client.publish(ENABLE_CHEATING_STATE_TOPIC, p, length,true);
+       pubResult=client.publish(ENABLE_CHEATING_STATE_TOPIC,(const unsigned char *) p, length,true);
       if (pubResult==true){
         bCentralHeatingEnable=false;
         bParamChanged=true;
@@ -1075,7 +1616,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   else if (!strcmp(topic, ENABLE_WHEATING_SET_TOPIC)) {
     if (!strcmp(p, "1")){
-      pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC, p, length,true);
+      pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC,(const unsigned char *) p, length,true);
       if (pubResult==true){
         bWaterHeatingEnable=true;
         LOGI(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC bWaterHeatingEnable:[true]");
@@ -1083,7 +1624,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
         LOGE(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC publish error");
       }
     }else if (!strcmp(p, "0")){
-      pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC, p, length,true);
+      pubResult=client.publish(ENABLE_WHEATING_STATE_TOPIC, (const unsigned char *) p, length,true);
       if (pubResult==true){
         bWaterHeatingEnable=false;
         LOGI(LOG_TAG,"ENABLE_WHEATING_SET_TOPIC bWaterHeatingEnable:[false]");
@@ -1242,7 +1783,7 @@ bool publishToTopicFloat(float value,const char *topic,const char * key,bool ret
   sprintf(mqttPayload,"{\"%s\":%f}",key,value);
   size_t n=strlen(mqttPayload);
 
-  bool published=client.publish(topic,mqttPayload,n,true);
+  bool published=client.publish(topic,(const unsigned char*)mqttPayload,n,true);
  
   return published;
 }
@@ -1254,7 +1795,7 @@ bool publishToTopicStr(char * value,const char *topic,const char * key,bool reta
   sprintf(mqttPayload,"{\"%s\":\"%s\"}",key,value);
   size_t n=strlen(mqttPayload);
 
-  bool published=client.publish(topic, mqttPayload, n,retain);
+  bool published=client.publish(topic,(const unsigned char*) mqttPayload, n,retain);
  
   return published;
 }
@@ -1306,7 +1847,36 @@ void publishInitializationValues(){
   published=client.publish(ENABLE_OT_LOG_SET_TOPIC, mqttPayload, n);
 
   sprintf(mqttPayload,"Init Default control values");
-  publishToTopicStr(mqttPayload,OT_LOG_STATE_TOPIC,"text",false); 
+  publishToTopicStr(mqttPayload,OT_LOG_STATE_TOPIC,"text",false);
+
+  sprintf(mqttPayload,"\"0\"");
+  n=strlen(mqttPayload);
+  published=client.publish(ENABLE_EXTTEMP_SET_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"{\"temp\",0}");
+  n=strlen(mqttPayload);
+  published=client.publish(CURRENT_EXTEMP_STATE_TOPIC, mqttPayload, n);
+
+  // PID VALUES
+  sprintf(mqttPayload,"{\"value\",%f}",Kp);
+  n=strlen(mqttPayload);
+  published=client.publish(PID_KP_SET_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"{\"value\",%f}",Ki);
+  n=strlen(mqttPayload);
+  published=client.publish(PID_KI_SET_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"{\"value\",%f}",Kd);
+  n=strlen(mqttPayload);
+  published=client.publish(PID_KD_SET_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"{\"value\",%f}",Ke);
+  n=strlen(mqttPayload);
+  published=client.publish(PID_KE_SET_TOPIC, mqttPayload, n);
+
+  sprintf(mqttPayload,"{\"value\",%f}",pid_interval);
+  n=strlen(mqttPayload);
+  published=client.publish(PID_INTERVAL_SET_TOPIC, mqttPayload, n);
 
 }
 
@@ -1317,7 +1887,7 @@ void publishAvailable(){
  
   sprintf(mqttPayload,"ONLINE");
   size_t n=strlen(mqttPayload);
-  published=client.publish(AVAILABILITY_TOPIC,mqttPayload , n,true);
+  published=client.publish(AVAILABILITY_TOPIC,(const unsigned char*)mqttPayload , n,true);
  
 }
 
