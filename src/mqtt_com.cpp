@@ -22,6 +22,7 @@ extern float nosp_override;
 extern bool bParamChanged;
 extern float flameLevel;
 extern unsigned long lastSpSet,lastPSet;
+extern bool bForceCycle;
 
 #define LOG_TAG "mqtt"
 
@@ -221,7 +222,7 @@ void MQTT_DiscoveryMsg_Sensor_WaterHeating(){
 
   DynamicJsonDocument doc(2048);
 
-  doc["name"] = "DWH Heating";
+  doc["name"] = "DHW Heating";
   char ID[64];
   sprintf(ID,"%s_WATERH",MQTT_DEV_UNIQUE_ID);
   doc["uniq_id"]=ID;
@@ -1251,6 +1252,30 @@ void MQTT_DiscoveryMsg_Button_InitDefValues(){
 
 }
 
+void MQTT_DiscoveryMsg_Button_triggerCycle(){
+  
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "Trigger cycle";
+  char ID[64];
+  sprintf(ID,"%s_TRIGGER_CYCLE",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+
+  doc["icon"]="mdi:refresh-auto";
+
+  doc["qos"]=0;
+  doc["retain"]=false;
+  doc["entity_category"]="diagnostic";
+  doc["command_topic"]=TRIGGER_CYCLE_TOPIC;
+  
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_TRIGGER_CYCLE_TOPIC,doc);
+
+}
+
 void callback(char* topic, byte* payload, unsigned int length) {
   LOGD(LOG_TAG,"MQTT Callback topic:[%s]",topic);
 
@@ -1735,6 +1760,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }else if (!strcmp(topic,INIT_DEFAULT_VALUES_TOPIC)){
     publishInitializationValues();
   }
+  else if (!strcmp(topic,TRIGGER_CYCLE_TOPIC)){
+    bForceCycle=true;
+  }
+
+
+
   free(p);
   return;
 }

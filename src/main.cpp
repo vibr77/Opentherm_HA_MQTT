@@ -182,7 +182,7 @@ float pid(float sp, float pv,float pv_ext, float pv_last, float& ierr, float dt)
     listData.remove(0);
   }
 
-  LOGI("MAIN","PID op:[%f] pv:[%f] dt:[%f] sp:[%f] P:[%f] I:[%f] E:",op,pv,dt,sp,P,I,E);
+  LOGI("MAIN","PID op:[%.2f] pv:[%.2f] dt:[%.2f] sp:[%.2f] P:[%.2f] I:[%.2f] D:[%.2f] E:[%.2f] ",op,pv,dt,sp,P,I,D,E);
   return op;
 }
 
@@ -267,7 +267,7 @@ void connectMQTT(){
 
       client.subscribe(ENABLE_OT_LOG_STATE_TOPIC);
       client.subscribe(ENABLE_OT_LOG_SET_TOPIC);
-      
+
       client.subscribe(ENABLE_EXTTEMP_SET_TOPIC);
       client.subscribe(ENABLE_EXTTEMP_STATE_TOPIC);
 
@@ -295,6 +295,7 @@ void connectMQTT(){
       client.subscribe(SETPOINT_OVERRIDE_SET_TOPIC);
       
       client.subscribe(INIT_DEFAULT_VALUES_TOPIC);
+      client.subscribe(TRIGGER_CYCLE_TOPIC);
 
       client.subscribe(PID_KP_STATE_TOPIC);
       client.subscribe(PID_KP_SET_TOPIC);
@@ -680,6 +681,7 @@ void setup(){
   MQTT_DiscoveryMsg_Number_PID_Ke();
 
   MQTT_DiscoveryMsg_Number_PID_Interval();
+  MQTT_DiscoveryMsg_Button_triggerCycle();
 
   publishAvailable();
 
@@ -899,7 +901,7 @@ void handleOpenTherm() {
 
     unsigned long now = millis();
 
-    if (now - lastUpdate > statusUpdateInterval_ms && (sp!=sp_last || t!=t_last || (now-lastWriteUpdate> (pid_interval*1000)))){
+    if (bForceCycle==true || (now - lastUpdate > statusUpdateInterval_ms && (sp!=sp_last || t!=t_last || (now-lastWriteUpdate> (pid_interval*1000))))){
         lastWriteUpdate=now;
         new_ts = millis();
         
@@ -910,6 +912,11 @@ void handleOpenTherm() {
         
         t_last=t;
         sp_last=sp;
+
+        if (bForceCycle==true){
+          LOGI("MAIN","Forced cycle process bForceCycle=TRUE")
+          bForceCycle=false;
+        }
 
         //req_idx=5; // <-- It starts with write request (5/8 requests)
         //requests_count=8; 

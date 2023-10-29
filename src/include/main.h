@@ -60,6 +60,8 @@ float oplo=LOW_BAND_TEMP,
 
 uint8_t boiler_status = 0;
 
+
+bool bForceCycle=false;
 bool bExtTempEnable=false;
 bool bCentralHeatingEnable=false;
 bool bWaterHeatingEnable=false;
