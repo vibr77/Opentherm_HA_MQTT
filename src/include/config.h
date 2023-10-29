@@ -103,6 +103,7 @@ static const float LOW_BAND_TEMP=33.0;
 static const float HIGH_BAND_TEMP=73;
 static const float NO_SP_TEMP_OVERRIDE=25;
 static const int MAX_MODULATION_LEVEL=100;
+static const int PID_INTERVAL=30;
 
 static const char * BASE_TOPIC="homeassistant/opentherm-thermostat/";
 

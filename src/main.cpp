@@ -267,6 +267,8 @@ void connectMQTT(){
 
       client.subscribe(ENABLE_OT_LOG_STATE_TOPIC);
       client.subscribe(ENABLE_OT_LOG_SET_TOPIC);
+      
+      client.subscribe(ENABLE_EXTTEMP_SET_TOPIC);
       client.subscribe(ENABLE_EXTTEMP_STATE_TOPIC);
 
       client.subscribe(MAX_MODULATION_LEVEL_STATE_TOPIC);

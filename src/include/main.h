@@ -55,7 +55,7 @@ float oplo=LOW_BAND_TEMP,
 	  Kd=0,						// PID Constant
 	  Ke=0,						// Constant for External adjustement
 
-	  pid_interval=30;					// External temperature sensor
+	  pid_interval=PID_INTERVAL;					// External temperature sensor
 
 
 uint8_t boiler_status = 0;
@@ -71,7 +71,7 @@ bool bWaterHeating=false;
 
 bool isFlameOn=false,isCentralHeatingActive=false,isHotWaterActive=false;
 
-int MaxModLevel=100;
+float MaxModLevel=100;
 float flameLevel=0,boilerTemp=0,boilerReturnTemp=0,dwhTemp=0,dwhTarget=45;
 float nosp_override=NO_SP_TEMP_OVERRIDE;
 

@@ -12,12 +12,12 @@ extern PubSubClient client;
 extern RemoteDebug Debug;
 
 extern float oplo,ophi,sp,t,t_ext,ierr,op,Ki,Kd,Kp,Ke;
-extern int pid_interval;
+extern float pid_interval;
 extern bool bCentralHeating, bWaterHeatingEnable,bCentralHeatingEnable,bHeatingMode,bOtLogEnable,bExtTempEnable;
 extern bool bWaterHeating;
 extern float dwhTarget;
 extern float dwhTemp;
-extern int MaxModLevel;
+extern float MaxModLevel;
 extern float nosp_override;
 extern bool bParamChanged;
 extern float flameLevel;
@@ -34,10 +34,11 @@ void LogMasterParam(){
   LOGI(LOG_TAG,"Master Param ierr:[%f]",ierr);
   LOGI(LOG_TAG,"Master Param op:[%f]",op);
   LOGI(LOG_TAG,"Master Param nosp:[%f]",nosp_override);
-  LOGI(LOG_TAG,"Master Param MaxModLevel:[%d]",MaxModLevel);
+  LOGI(LOG_TAG,"Master Param MaxModLevel:[%f]",MaxModLevel);
   LOGI(LOG_TAG,"Master Param dwhTarget:[%f]",dwhTarget);
   LOGI(LOG_TAG,"Master Param dwhTemp:[%f]",dwhTemp);
   LOGI(LOG_TAG,"Master Param FlameLevel:[%f]",flameLevel);
+  LOGI(LOG_TAG,"Master Param pid_interval:[%f]",pid_interval);
 
   if (bWaterHeatingEnable==true){
     LOGI(LOG_TAG,"Master Param bWaterHeatingEnable:[true]");
@@ -1238,7 +1239,7 @@ void MQTT_DiscoveryMsg_Button_InitDefValues(){
   doc["icon"]="mdi:refresh-auto";
 
   doc["qos"]=0;
-  doc["retain"]=true;
+  doc["retain"]=false;
   doc["entity_category"]="diagnostic";
   doc["command_topic"]=INIT_DEFAULT_VALUES_TOPIC;
   
@@ -1255,6 +1256,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   char* p = (char*)malloc((length+1)*sizeof(char));
   memcpy(p,payload,length);
+  
   p[length]=0;
   bool pubResult=false;
 
@@ -1262,7 +1264,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   if (!strcmp(topic, CURRENT_EXTEMP_STATE_TOPIC)) {
     float t_ext=getPayloadFloatValue("temp",p);
-      LOGD(LOG_TAG,"CURRENT_EXTEMP_STATE_TOPIC new value:%f",t_ext);
+    LOGD(LOG_TAG,"CURRENT_EXTEMP_STATE_TOPIC new value:%f",t_ext);
   }
   // PID Management 
   else if (!strcmp(topic, PID_KP_STATE_TOPIC)) {
@@ -1284,7 +1286,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       }
     }
   }else if (!strcmp(topic, PID_KI_STATE_TOPIC)) {
-    float Ki1=getPayloadFloatValue("temp",p);
+    float Ki1=getPayloadFloatValue("value",p);
     if (Ki1>0) {
       Ki=Ki1;
       LOGD(LOG_TAG,"PID_KI_STATE_TOPIC new value:%f",Ki1);
@@ -1303,7 +1305,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
   }
   else if (!strcmp(topic, PID_KD_STATE_TOPIC)) {
-    float Kd1=getPayloadFloatValue("temp",p);
+    float Kd1=getPayloadFloatValue("value",p);
     if (Kd1>0) {
       Kd=Kd1;
       LOGD(LOG_TAG,"PID_KD_STATE_TOPIC new value:%f",Kd1);
@@ -1323,7 +1325,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   
   else if (!strcmp(topic, PID_KE_STATE_TOPIC)) {
-    float Ke1=getPayloadFloatValue("temp",p);
+    float Ke1=getPayloadFloatValue("value",p);
     if (Ke1>0) {
       Ke=Ke1;
       LOGD(LOG_TAG,"PID_KD_STATE_TOPIC new value:%f",Ke1);
@@ -1343,10 +1345,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
   }
   else if (!strcmp(topic, PID_INTERVAL_STATE_TOPIC)) {
-    float pid_interval1=getPayloadFloatValue("value",p);
-    if (pid_interval1>0) {
-      pid_interval=pid_interval1;
-      LOGD(LOG_TAG,"PID_INTERVAL_STATE_TOPIC new value:%f",pid_interval1);
+    float val=getPayloadFloatValue("value",p);
+    if (val>0 && val<601) {
+      pid_interval=val;
+      LOGD(LOG_TAG,"PID_INTERVAL_STATE_TOPIC new value:%f",val);
     }else{
       LOGE(LOG_TAG,"PID_INTERVAL_STATE_TOPIC value <= 0 error");
     }
@@ -1363,13 +1365,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
   }
 
-
   // CURRENT TEMPERATURE
   else if (!strcmp(topic, CURRENT_TEMP_STATE_TOPIC)) {
-    float t1=getPayloadFloatValue("temp",p);
-    if (t1>0) {
-      t=t1;
-      LOGD(LOG_TAG,"CURRENT_TEMP_STATE_TOPIC new temperature:%f",t1);
+    float val=getPayloadFloatValue("temp",p);
+    LOGD("MAIN","debug payload: %f",p);
+    if (val>0) {
+      t=val;
+      LOGD(LOG_TAG,"CURRENT_TEMP_STATE_TOPIC new temperature:%f",val);
       unsigned long now = millis();
       lastPSet=now;
     }else{
@@ -1734,6 +1736,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     publishInitializationValues();
   }
   free(p);
+  return;
 }
 
 bool isValidNumber(char payload[]){
@@ -1749,10 +1752,26 @@ bool isValidNumber(char payload[]){
 
 
 float getPayloadFloatValue(const char * key, char * payload){
-  DynamicJsonDocument doc(256);
-  deserializeJson(doc, payload);
-  float res= doc[key];
-  return res;
+  
+
+  StaticJsonDocument<256> doc;
+  DeserializationError err =deserializeJson(doc, payload);
+  float res=-1;
+  if (err) {
+    LOGE(LOG_TAG,"deserializeJson() failed:%s payload:%s returning",err.c_str(),payload);
+    return -1;
+  }
+  
+  LOGD(LOG_TAG,"key:[%s], payload:[%s]",key,payload);
+
+  if (doc.containsKey(key)){
+    res=doc[key];
+    LOGI(LOG_TAG,"getPayloadFloatValue: key:[%s] value:[%f]",key,res);
+    return res;       
+  }else{
+    LOGE(LOG_TAG,"getPayloadFloatValue does nto contain key:[%s]",key);
+    return -1;
+  }
 }
 
 char * getPayloadCharValue(const char * key, char * payload){
@@ -1801,82 +1820,45 @@ bool publishToTopicStr(char * value,const char *topic,const char * key,bool reta
 }
 
 void publishInitializationValues(){
-  // 
-  char mqttPayload[256];
+
+  char mqttPayload[32];
   bool published;
   size_t n=0;
+  LOGD("MAIN","Init default Values");
+  bool pubResult;
 
-  sprintf(mqttPayload,"{\"temp\",%f}",INITIAL_TEMP);
-  n=strlen(mqttPayload);
-  published=client.publish(CURRENT_TEMP_STATE_TOPIC, mqttPayload, n);
+  pubResult=publishToTopicFloat(INITIAL_TEMP,CURRENT_TEMP_STATE_TOPIC,"temp",true); 
+  pubResult=publishToTopicFloat(INITIAL_SP,TEMP_SETPOINT_STATE_TOPIC,"temp",true); 
+  pubResult=publishToTopicFloat(LOW_BAND_TEMP,LBAND_TEMP_STATE_TOPIC,"temp",true); 
+  pubResult=publishToTopicFloat(HIGH_BAND_TEMP,HBAND_TEMP_STATE_TOPIC,"temp",true); 
+  pubResult=publishToTopicFloat(MAX_MODULATION_LEVEL,MAX_MODULATION_LEVEL_STATE_TOPIC,"level",true); 
+  pubResult=publishToTopicFloat(INITIAL_TARGET_DWH_TEMP,TEMP_DHW_STATE_TOPIC,"temp",true); 
+  pubResult=publishToTopicFloat(INITIAL_NO_SP_TEMP_OVERRIDE,NOSP_OVERRIDE_TEMP_STATE_TOPIC,"temp",true); 
+  pubResult=publishToTopicFloat(0,CURRENT_EXTEMP_STATE_TOPIC,"temp",true); 
+  pubResult=publishToTopicFloat(Kp,PID_KP_STATE_TOPIC,"value",true); 
+  pubResult=publishToTopicFloat(Ki,PID_KI_STATE_TOPIC,"value",true); 
+  pubResult=publishToTopicFloat(Kd,PID_KD_STATE_TOPIC,"value",true); 
+  pubResult=publishToTopicFloat(Ke,PID_KE_STATE_TOPIC,"value",true); 
+  pubResult=publishToTopicFloat(pid_interval,PID_INTERVAL_STATE_TOPIC,"value",true); 
 
-  sprintf(mqttPayload,"{\"temp\",%f}",INITIAL_SP);
-  n=strlen(mqttPayload);
-  published=client.publish(TEMP_SETPOINT_STATE_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"{\"temp\",%f}",LOW_BAND_TEMP);
-  n=strlen(mqttPayload);
-  published=client.publish(LBAND_TEMP_STATE_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"{\"temp\",%f}",HIGH_BAND_TEMP);
-  n=strlen(mqttPayload);
-  published=client.publish(HBAND_TEMP_STATE_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"{\"level\",%f}",MAX_MODULATION_LEVEL);
-  n=strlen(mqttPayload);
-  published=client.publish(MAX_MODULATION_LEVEL_STATE_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"{\"temp\",%f}",INITIAL_TARGET_DWH_TEMP);
-  n=strlen(mqttPayload);
-  published=client.publish(TEMP_DHW_STATE_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"{\"temp\",%f}",INITIAL_NO_SP_TEMP_OVERRIDE);
-  n=strlen(mqttPayload);
-  published=client.publish(NOSP_OVERRIDE_TEMP_STATE_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"\"0\"");
+  sprintf(mqttPayload,"0");
   n=strlen(mqttPayload);
   published=client.publish(ENABLE_CHEATING_SET_TOPIC, mqttPayload, n);
 
-  sprintf(mqttPayload,"\"0\"");
+  sprintf(mqttPayload,"0");
   n=strlen(mqttPayload);
   published=client.publish(ENABLE_WHEATING_SET_TOPIC, mqttPayload, n);
 
-  sprintf(mqttPayload,"\"0\"");
+  sprintf(mqttPayload,"0");
   n=strlen(mqttPayload);
   published=client.publish(ENABLE_OT_LOG_SET_TOPIC, mqttPayload, n);
 
   sprintf(mqttPayload,"Init Default control values");
   publishToTopicStr(mqttPayload,OT_LOG_STATE_TOPIC,"text",false);
 
-  sprintf(mqttPayload,"\"0\"");
+  sprintf(mqttPayload,"0");
   n=strlen(mqttPayload);
   published=client.publish(ENABLE_EXTTEMP_SET_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"{\"temp\",0}");
-  n=strlen(mqttPayload);
-  published=client.publish(CURRENT_EXTEMP_STATE_TOPIC, mqttPayload, n);
-
-  // PID VALUES
-  sprintf(mqttPayload,"{\"value\",%f}",Kp);
-  n=strlen(mqttPayload);
-  published=client.publish(PID_KP_SET_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"{\"value\",%f}",Ki);
-  n=strlen(mqttPayload);
-  published=client.publish(PID_KI_SET_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"{\"value\",%f}",Kd);
-  n=strlen(mqttPayload);
-  published=client.publish(PID_KD_SET_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"{\"value\",%f}",Ke);
-  n=strlen(mqttPayload);
-  published=client.publish(PID_KE_SET_TOPIC, mqttPayload, n);
-
-  sprintf(mqttPayload,"{\"value\",%f}",pid_interval);
-  n=strlen(mqttPayload);
-  published=client.publish(PID_INTERVAL_SET_TOPIC, mqttPayload, n);
 
 }
 
