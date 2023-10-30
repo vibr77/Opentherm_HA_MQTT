@@ -512,7 +512,7 @@ void MQTT_DiscoveryMsg_Sensor_DerivativeContribution(){
 
   doc["dev_cla"] = "temperature";
   doc["qos"]=0;
-  doc["state_topic"]=INTEGRAL_ERROR_STATE_TOPIC;
+  doc["state_topic"]=DERIVATIVE_ERROR_STATE_TOPIC;
   doc["unit_of_measurement"] = "°C";
   doc["value_template"]="{{ value_json.value }}";
   doc["suggested_display_precision"]=2;
@@ -731,9 +731,9 @@ void MQTT_DiscoveryMsg_Number_PID_Kd(){
   doc["icon"]="mdi:sine-wave";
 
   doc["min"]=0;
-  doc["max"]=1;
+  doc["max"]=10000;
   doc["mode"]="box";
-  doc["step"]=0.001;
+  doc["step"]=1;
   doc["qos"]=0;
   doc["retain"]=true;
 

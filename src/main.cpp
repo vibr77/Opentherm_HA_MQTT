@@ -137,7 +137,7 @@ float pid(float sp, float pv,float pv_ext, float pv_last, float& ierr, float dt)
 
    P = Kp * error; //proportional contribution
    I = ierr; //integral contribution
-   D = dpv;
+   D = Kd*dpv;
    E = Ke * error_ext;
 
    op = P + I+ D + E;
@@ -182,7 +182,7 @@ float pid(float sp, float pv,float pv_ext, float pv_last, float& ierr, float dt)
     listData.remove(0);
   }
 
-  LOGI("MAIN","PID op:[%.2f] pv:[%.2f] dt:[%.2f] sp:[%.2f] P:[%.2f] I:[%.2f] D:[%.2f] E:[%.2f] ",op,pv,dt,sp,P,I,D,E);
+  LOGI("MAIN","PID op:[%.2f] pv:[%.2f],pv_last[%.2f] dt:[%.2f] sp:[%.2f] P:[%.2f] I:[%.2f] D:[%.2f] E:[%.2f] ",op,pv,pv_last,dt,sp,P,I,D,E);
   return op;
 }
 

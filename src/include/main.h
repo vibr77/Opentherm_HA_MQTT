@@ -51,7 +51,7 @@ float oplo=LOW_BAND_TEMP,
 	  ierr_df=0.05,				// ierr decreasing factor
 	  
 	  Kp=45,					// PID Constant
-	  Ki=0.05,					// PID Constant
+	  Ki=0.035,					// PID Constant
 	  Kd=0,						// PID Constant
 	  Ke=0,						// Constant for External adjustement
 

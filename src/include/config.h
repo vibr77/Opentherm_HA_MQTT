@@ -33,7 +33,7 @@ ______________________
 #endif
 
 
-static const char * SW_VERSION="0.57";
+static const char * SW_VERSION="0.58";
 
 // MOVE TO pwd.h
 
