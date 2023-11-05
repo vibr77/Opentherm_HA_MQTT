@@ -43,6 +43,7 @@ void MQTT_DiscoveryMsg_Switch_EnableExtTemp();
 void MQTT_DiscoveryMsg_Switch_EnableWaterHeating();
 void MQTT_DiscoveryMsg_Switch_EnableCentralHeating();
 void MQTT_DiscoveryMsg_Switch_EnableLog();
+void MQTT_DiscoveryMsg_Switch_SwCentralHeating();
 
 void MQTT_DiscoveryMsg_Text_Log();
 

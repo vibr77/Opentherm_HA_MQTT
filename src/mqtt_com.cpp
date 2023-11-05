@@ -13,7 +13,7 @@ extern RemoteDebug Debug;
 
 extern float oplo,ophi,sp,t,t_ext,ierr,op,Ki,Kd,Kp,Ke;
 extern float pid_interval;
-extern bool bCentralHeating, bWaterHeatingEnable,bCentralHeatingEnable,bHeatingMode,bOtLogEnable,bExtTempEnable;
+extern bool bCentralHeating, bWaterHeatingEnable,bCentralHeatingEnable,bCentralHeatingSw, bHeatingMode,bOtLogEnable,bExtTempEnable;
 extern bool bWaterHeating;
 extern float dwhTarget;
 extern float dwhTemp;
@@ -41,6 +41,7 @@ void LogMasterParam(){
   LOGI(LOG_TAG,"Master Param FlameLevel:[%f]",flameLevel);
   LOGI(LOG_TAG,"Master Param pid_interval:[%f]",pid_interval);
 
+
   if (bWaterHeatingEnable==true){
     LOGI(LOG_TAG,"Master Param bWaterHeatingEnable:[true]");
   }else{
@@ -57,6 +58,13 @@ void LogMasterParam(){
   }else{
     LOGI(LOG_TAG,"Master Param bHeatingMode:[false]");
   }
+
+  if (bCentralHeatingSw==true){
+    LOGI(LOG_TAG,"Master Param bCentralHeatingSw:[true]");
+  }else{
+    LOGI(LOG_TAG,"Master Param bCentralHeatingSw:[false]");
+  }
+
 }
 
 
@@ -199,7 +207,7 @@ void MQTT_DiscoveryMsg_Sensor_CentralHeating(){
   char ID[64];
   sprintf(ID,"%s_CENTRALH",MQTT_DEV_UNIQUE_ID);
   doc["uniq_id"]=ID;
-  doc["icon"]="mdi:fire";
+  doc["icon"]="mdi:water-boiler";
   doc["payload_off"]="OFF";
   doc["payload_on"]="ON";
   doc["qos"]=0;
@@ -227,7 +235,7 @@ void MQTT_DiscoveryMsg_Sensor_WaterHeating(){
   sprintf(ID,"%s_WATERH",MQTT_DEV_UNIQUE_ID);
   doc["uniq_id"]=ID;
 
-  doc["icon"]="mdi:fire";
+  doc["icon"]="mdi:water-boiler";
   doc["payload_off"]="OFF";
   doc["payload_on"]="ON";
   doc["qos"]=0;
@@ -963,13 +971,45 @@ void MQTT_DiscoveryMsg_Switch_EnableExtTemp(){
 //
 // Boiler [Config] Enable Central Heating TRUE|FALSE
 //
+void MQTT_DiscoveryMsg_Switch_SwCentralHeating(){
+
+  DynamicJsonDocument doc(2048);
+
+  doc["name"] = "SW Central Heating";
+  doc["icon"]="mdi:water-boiler";
+  char ID[64];
+  sprintf(ID,"%s_SW_CHEATING",MQTT_DEV_UNIQUE_ID);
+  doc["uniq_id"]=ID;
+  doc["device_class"]="switch";
+  
+  doc["payload_off"]="0";
+  doc["payload_on"]="1";
+
+  doc["state_off"]="0";
+  doc["state_on"]="1";
+  doc["enabled_by_default"]=false;
+  doc["qos"]=0;
+  doc["retain"]=true;
+  doc["entity_category"]="config";
+  doc["optimistic"]=OPTIMISTIC;
+  
+  doc["state_topic"]=SW_CHEATING_STATE_TOPIC;
+  doc["command_topic"]=SW_CHEATING_SET_TOPIC;
+  
+  DynamicJsonDocument dev=getDeviceBlock();
+  doc["dev"]=dev["dev"];
+  doc["availability"]=dev["availability"];
+
+  bool published= sendMqttMsg(DISCOVERY_SW_CHEATING_TOPIC,doc);
+}
+
 
 void MQTT_DiscoveryMsg_Switch_EnableCentralHeating(){
 
   DynamicJsonDocument doc(2048);
 
   doc["name"] = "Central Heating";
-  doc["icon"]="mdi:fire";
+  doc["icon"]="mdi:water-boiler";
   char ID[64];
   sprintf(ID,"%s_ENABLE_CHEATING",MQTT_DEV_UNIQUE_ID);
   doc["uniq_id"]=ID;
@@ -1588,7 +1628,40 @@ void callback(char* topic, byte* payload, unsigned int length) {
       LOGE(LOG_TAG,"ENABLE_EXTTEMP_SET_TOPIC unknow param value error");
     }
   }
-  
+  // SW_CHEATING 
+    else if (!strcmp(topic, SW_CHEATING_STATE_TOPIC)) {
+    if (!strcmp(p, "1")){
+      bCentralHeatingSw=true;
+      bParamChanged=true;
+      LOGI(LOG_TAG,"SW_CHEATING_STATE_TOPIC bCentralHeatingEnable:[true]");
+    }else if (!strcmp(p, "0")){
+      bCentralHeatingSw=false;
+      bParamChanged=true;
+      LOGI(LOG_TAG,"SW_CHEATING_STATE_TOPIC bCentralHeatingEnable:[false]");
+    }else{
+      LOGE(LOG_TAG,"SW_CHEATING_STATE_TOPIC unknow param value error");
+    }
+  }
+  else if (!strcmp(topic, SW_CHEATING_SET_TOPIC)) {
+    if (!strcmp(p, "1")){
+      pubResult=client.publish(SW_CHEATING_STATE_TOPIC,(const unsigned char *) p, length,true);
+      if (pubResult==true){
+       
+        LOGI(LOG_TAG,"SW_CHEATING_SET_TOPIC bCentralHeatingEnable:[true]");
+      }else{
+        LOGE(LOG_TAG,"SW_CHEATING_SET_TOPIC publish error");
+      }
+    }else if (!strcmp(p, "0")){
+       pubResult=client.publish(SW_CHEATING_STATE_TOPIC,(const unsigned char *) p, length,true);
+      if (pubResult==true){
+        LOGI(LOG_TAG,"SW_CHEATING_SET_TOPIC bCentralHeatingEnable:[false]");
+      }else{
+        LOGE(LOG_TAG,"SW_CHEATING_SET_TOPIC publish error");
+      }
+    }else{
+      LOGE(LOG_TAG,"SW_CHEATING_SET_TOPIC unknow param value error");
+    }
+  }
   // ENABLE CHEATING 
   else if (!strcmp(topic, ENABLE_CHEATING_STATE_TOPIC)) {
     if (!strcmp(p, "1")){

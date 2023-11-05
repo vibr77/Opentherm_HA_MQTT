@@ -99,8 +99,8 @@ static const float PRECISION=0.5;
 static const float TEMPERATURE_STEP=0.5;
 static  const boolean OPTIMISTIC=false;
 
-static const float LOW_BAND_TEMP=33.0;
-static const float HIGH_BAND_TEMP=73;
+static const float LOW_BAND_TEMP=20.0;
+static const float HIGH_BAND_TEMP=60;
 static const float NO_SP_TEMP_OVERRIDE=25;
 static const int MAX_MODULATION_LEVEL=100;
 static const int PID_INTERVAL=30;
@@ -135,6 +135,7 @@ static const char * DISCOVERY_LBAND_TEMP_TOPIC=             "homeassistant/numbe
 static const char * DISCOVERY_NOSP_OVERRIDE_TEMP_TOPIC=     "homeassistant/number/opentherm-thermostat/no_sp_temp_override/config";
 static const char * DISCOVERY_TEMP_DHW_TOPIC=               "homeassistant/number/opentherm-thermostat/dwh_temp/config";
 static const char * DISCOVERY_ENABLE_CHEATING_TOPIC=        "homeassistant/switch/opentherm-thermostat/enable_cheating/config";
+static const char * DISCOVERY_SW_CHEATING_TOPIC=            "homeassistant/switch/opentherm-thermostat/sw_cheating/config";
 static const char * DISCOVERY_ENABLE_WHEATING_TOPIC=        "homeassistant/switch/opentherm-thermostat/enable_wheating/config";
 static const char * DISCOVERY_ENABLE_EXTTEMP_TOPIC=         "homeassistant/switch/opentherm-thermostat/enable_ext_temp/config";
 static const char * DISCOVERY_ENABLE_OT_LOG_TOPIC=          "homeassistant/switch/opentherm-thermostat/enable_ot_log/config";
@@ -186,6 +187,10 @@ static const char * CENTRAL_HEATING_STATE_TOPIC =           "homeassistant/opent
 // Waterheating
 static const char * WATER_HEATING_STATE_TOPIC = "homeassistant/opentherm-thermostat/waterheating/state";
 // Enable Central Heating
+
+static const char * SW_CHEATING_STATE_TOPIC = "homeassistant/opentherm-thermostat/sw_cheating/state";
+static const char * SW_CHEATING_SET_TOPIC = "homeassistant/opentherm-thermostat/sw_cheating/set";
+
 static const char * ENABLE_CHEATING_STATE_TOPIC = "homeassistant/opentherm-thermostat/enable_cheating/state";
 static const char * ENABLE_CHEATING_SET_TOPIC = "homeassistant/opentherm-thermostat/enable_cheating/set";
 
@@ -209,7 +214,6 @@ static const char * OT_LOG_STATE_TOPIC = "homeassistant/opentherm-thermostat/ot_
 
 static const char * MAX_MODULATION_LEVEL_STATE_TOPIC = "homeassistant/opentherm-thermostat/max_modulation_level/state";
 static const char * MAX_MODULATION_LEVEL_SET_TOPIC = "homeassistant/opentherm-thermostat/max_modulation_level/set";
-
 
 static const char * LBAND_TEMP_STATE_TOPIC = "homeassistant/opentherm-thermostat/low_band_temperature/state";
 static const char * LBAND_TEMP_SET_TOPIC = "homeassistant/opentherm-thermostat/low_band_temperature/set";

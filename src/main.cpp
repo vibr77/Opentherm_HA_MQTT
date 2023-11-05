@@ -123,11 +123,11 @@ float pid(float sp, float pv,float pv_ext, float pv_last, float& ierr, float dt)
   float error = sp - pv;                     // calculate the error
   float error_ext= sp- pv_ext;
 
-  if (error==0 && ierr>=0){
-    ierr = ierr - Ki * 0.5 * dt; 
-  }else{ 
-    ierr = ierr + Ki * error * dt;            // calculate the integral error
-  }
+  //if (error==0 && ierr>=0){
+  //  ierr = ierr - Ki * 0.5 * dt; 
+  //}else{ 
+  ierr = ierr + Ki * error * dt;            // calculate the integral error
+  //}
 
   // calculate the measurement derivative
   
@@ -143,12 +143,17 @@ float pid(float sp, float pv,float pv_ext, float pv_last, float& ierr, float dt)
    op = P + I+ D + E;
 
   if (bExtTempEnable==true)
-    op += E;
+  op += E;
  
+/*if ((op > oplo) && (op < ophi))
+    I = I + Ki * error * dt;
+else 
+    I = I - Ki * error * dt; 
+*/
   // implement anti-reset windup
   if ((op < oplo) || (op > ophi)) {
-    I = I - Ki * error * dt;
     // clip output
+    I = I - Ki * error * dt;
     op = max(oplo, min(ophi, op));
   }
   ierr = I;
@@ -261,6 +266,9 @@ void connectMQTT(){
       
       client.subscribe(ENABLE_CHEATING_SET_TOPIC);
       client.subscribe(ENABLE_CHEATING_STATE_TOPIC);
+
+      client.subscribe(SW_CHEATING_SET_TOPIC);
+      client.subscribe(SW_CHEATING_STATE_TOPIC);
 
       client.subscribe(ENABLE_WHEATING_SET_TOPIC);
       client.subscribe(ENABLE_WHEATING_STATE_TOPIC);
@@ -665,6 +673,8 @@ void setup(){
   MQTT_DiscoveryMsg_Switch_EnableCentralHeating();
   MQTT_DiscoveryMsg_Switch_EnableWaterHeating();
   MQTT_DiscoveryMsg_Switch_EnableLog();
+  MQTT_DiscoveryMsg_Switch_SwCentralHeating();
+
 
   MQTT_DiscoveryMsg_Text_Log();
 
@@ -871,7 +881,7 @@ unsigned int buildRequest(byte req_idx){
   switch (id){
     case OpenThermMessageID::Status:
       status = 0;
-      if (bCentralHeatingEnable && bHeatingMode) status |= MASTER_STATUS_CH_ENABLED;
+      if (bCentralHeatingEnable && bCentralHeatingSw &&  bHeatingMode) status |= MASTER_STATUS_CH_ENABLED;
       if (bWaterHeatingEnable) status |= MASTER_STATUS_DHW_ENABLED;
         //if (CoolingEnabled) status |= MASTER_STATUS_COOLING_ENABLED;        // No cooling 
       status <<= 8;
